@@ -1,10 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
+import { TeamProvider } from '../src/context/TeamContext';
 
 export default function RootLayout() {
   return (
-    <>
+    <TeamProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -22,7 +23,9 @@ export default function RootLayout() {
         <Stack.Screen name="player/[id]" options={{ title: 'Player Details' }} />
         <Stack.Screen name="import-roster" options={{ title: 'Import Roster' }} />
         <Stack.Screen name="manual-roster" options={{ title: 'Manual Roster Entry' }} />
+        <Stack.Screen name="manage-teams" options={{ title: 'My Teams' }} />
+        <Stack.Screen name="select-opponent" options={{ title: 'Select Opponent' }} />
       </Stack>
-    </>
+    </TeamProvider>
   );
 }

@@ -7,18 +7,27 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { getMockRosters } from '../src/data/mockRoster';
-import { GameState, Player } from '../src/data/models';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useTeams } from '../src/context/TeamContext';
+import { GameState, Player, Team } from '../src/data/models';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 type PitchResult = 'ball' | 'strike' | 'foul' | 'hit' | 'homeRun';
 
 export default function GameScreen() {
   const router = useRouter();
-  const team = getMockRosters()[0];
+  const { opponentId, opponentName } = useLocalSearchParams<{ opponentId?: string; opponentName?: string }>();
+  const { activeTeam, allTeams } = useTeams();
+
+  // Determine teams: home = active, away = opponent (or first non-active team)
+  const opponentTeam = opponentId
+    ? allTeams.find((t) => t.id === opponentId)
+    : allTeams.find((t) => t.id !== activeTeam?.id);
+
+  const effectiveHomeTeam = activeTeam;
+  const effectiveAwayTeam = opponentTeam || allTeams.find((t) => t.id !== activeTeam?.id);
+
   const [gameState, setGameState] = useState<GameState>({
     inning: 1,
     isTop: true,
@@ -28,18 +37,33 @@ export default function GameScreen() {
     homeScore: 0,
     awayScore: 0,
     isGameOver: false,
-    currentPitcher: team.players[0],
-    currentBatter: team.players[2],
+    currentPitcher: null,
+    currentBatter: null,
   });
   const [currentResult, setCurrentResult] = useState<string | null>(null);
   const [lastPitchResult, setLastPitchResult] = useState<PitchResult | null>(null);
   const [batterIndex, setBatterIndex] = useState(0);
   const [inningHistory, setInningHistory] = useState<string[]>([]);
 
-  const pitchAnim = useRef(new Animated.Value(0)).current;
-  const swingAnim = useRef(new Animated.Value(0)).current;
-  const ballPosX = useRef(new Animated.Value(0)).current;
   const ballPosY = useRef(new Animated.Value(0)).current;
+  const swingAnim = useRef(new Animated.Value(0)).current;
+
+  // Set pitcher/batter from current teams
+  useEffect(() => {
+    if (effectiveHomeTeam && effectiveAwayTeam) {
+      // Top of inning = away team bats, bottom = home team bats
+      const battingTeam = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
+      const pitchingTeam = gameState.isTop ? effectiveHomeTeam : effectiveAwayTeam;
+      const pitcher = pitchingTeam.players.find((p) => p.position === 'P') || pitchingTeam.players[0];
+      const batter = battingTeam.players[batterIndex % battingTeam.players.length];
+
+      setGameState((prev) => ({
+        ...prev,
+        currentPitcher: pitcher,
+        currentBatter: batter,
+      }));
+    }
+  }, [effectiveHomeTeam, effectiveAwayTeam, gameState.isTop, batterIndex]);
 
   /** Determine pitch outcome based on batter/pitcher stats */
   const simulatePitch = useCallback((): PitchResult => {
@@ -58,40 +82,13 @@ export default function GameScreen() {
     return 'ball';
   }, [gameState]);
 
-  /** Animate the pitch */
-  const animatePitch = useCallback((onComplete: () => void) => {
-    Animated.sequence([
-      Animated.timing(ballPosX, {
-        toValue: 0,
-        duration: 0,
-        useNativeDriver: true,
-      }),
-      Animated.timing(ballPosY, {
-        toValue: SCREEN_HEIGHT * 0.35,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onComplete();
-    });
-  }, [ballPosX, ballPosY]);
-
   /** Handle a swing */
   const handleSwing = useCallback(() => {
     if (gameState.isGameOver) return;
 
-    // Animate swing
     Animated.sequence([
-      Animated.timing(swingAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(swingAnim, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
+      Animated.timing(swingAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+      Animated.timing(swingAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
     ]).start();
 
     const result = simulatePitch();
@@ -103,9 +100,7 @@ export default function GameScreen() {
         resultText = 'Ball!';
         setGameState((prev) => {
           const newBalls = prev.balls + 1;
-          if (newBalls >= 4) {
-            return { ...prev, balls: 0, strikes: 0 };
-          }
+          if (newBalls >= 4) return { ...prev, balls: 0, strikes: 0 };
           return { ...prev, balls: newBalls };
         });
         break;
@@ -113,28 +108,20 @@ export default function GameScreen() {
         resultText = 'Strike!';
         setGameState((prev) => {
           const newStrikes = prev.strikes + 1;
-          if (newStrikes >= 3) {
-            return handleOut(prev);
-          }
+          if (newStrikes >= 3) return handleOut(prev);
           return { ...prev, strikes: newStrikes };
         });
         break;
       case 'foul':
         resultText = 'Foul ball!';
         setGameState((prev) => {
-          if (prev.strikes < 2) {
-            return { ...prev, strikes: prev.strikes + 1 };
-          }
+          if (prev.strikes < 2) return { ...prev, strikes: prev.strikes + 1 };
           return prev;
         });
         break;
       case 'hit':
         resultText = 'Hit! 🏃';
-        setGameState((prev) => ({
-          ...prev,
-          balls: 0,
-          strikes: 0,
-        }));
+        setGameState((prev) => ({ ...prev, balls: 0, strikes: 0 }));
         break;
       case 'homeRun':
         resultText = 'HOME RUN! ⚾✨';
@@ -149,8 +136,6 @@ export default function GameScreen() {
 
     setCurrentResult(resultText);
     setInningHistory((prev) => [...prev, resultText]);
-
-    // Reset pitch position
     ballPosY.setValue(0);
     swingAnim.setValue(0);
   }, [gameState, simulatePitch, swingAnim, ballPosY]);
@@ -159,7 +144,6 @@ export default function GameScreen() {
   const handleOut = (prev: GameState): GameState => {
     const newOuts = prev.outs + 1;
     if (newOuts >= 3) {
-      // End of half-inning
       return {
         ...prev,
         outs: 0,
@@ -167,7 +151,7 @@ export default function GameScreen() {
         strikes: 0,
         isTop: !prev.isTop,
         inning: prev.isTop ? prev.inning : prev.inning + 1,
-        currentBatter: team.players[0],
+        currentBatter: null,
       };
     }
     return { ...prev, outs: newOuts, balls: 0, strikes: 0 };
@@ -175,15 +159,16 @@ export default function GameScreen() {
 
   /** Advance to next batter */
   const nextBatter = useCallback(() => {
+    const team = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
+    if (!team) return;
     const nextIndex = (batterIndex + 1) % team.players.length;
     setBatterIndex(nextIndex);
-    setGameState((prev) => ({
-      ...prev,
-      currentBatter: team.players[nextIndex],
-    }));
     setCurrentResult(null);
     setLastPitchResult(null);
-  }, [batterIndex, team.players]);
+  }, [batterIndex, gameState.isTop, effectiveHomeTeam, effectiveAwayTeam]);
+
+  const homeName = effectiveHomeTeam?.name ?? 'HOME';
+  const awayName = effectiveAwayTeam?.name ?? 'AWAY';
 
   return (
     <View style={styles.container}>
@@ -191,8 +176,9 @@ export default function GameScreen() {
       <View style={styles.scoreboard}>
         <View style={styles.scoreRow}>
           <View style={styles.scoreTeam}>
-            <Text style={styles.scoreTeamName}>{gameState.isTop ? '🏠 HOME' : '✈ AWAY'}</Text>
-            <Text style={styles.scoreValue}>{gameState.homeScore}</Text>
+            <Text style={styles.scoreTeamLabel}>AWAY</Text>
+            <Text style={styles.scoreTeamName}>{awayName}</Text>
+            <Text style={styles.scoreValue}>{gameState.awayScore}</Text>
           </View>
           <View style={styles.scoreInning}>
             <Text style={styles.inningLabel}>
@@ -206,38 +192,25 @@ export default function GameScreen() {
             </View>
           </View>
           <View style={styles.scoreTeam}>
-            <Text style={styles.scoreTeamName}>{gameState.isTop ? '✈ AWAY' : '🏠 HOME'}</Text>
-            <Text style={styles.scoreValue}>{0}</Text>
+            <Text style={styles.scoreTeamLabel}>HOME</Text>
+            <Text style={styles.scoreTeamName}>{homeName}</Text>
+            <Text style={styles.scoreValue}>{gameState.homeScore}</Text>
           </View>
         </View>
       </View>
 
       {/* Baseball Field */}
       <View style={styles.field}>
-        {/* Diamond */}
         <View style={styles.diamond}>
           <View style={styles.diamondInner} />
-
-          {/* Pitcher */}
           <View style={styles.pitcherMound}>
             <Text style={styles.pitcherEmoji}>⛽</Text>
           </View>
-
-          {/* Batter */}
           <View style={styles.batterBox}>
             <Text style={styles.batterEmoji}>🏏</Text>
           </View>
-
-          {/* Ball animation */}
           <Animated.View
-            style={[
-              styles.ball,
-              {
-                transform: [
-                  { translateY: ballPosY },
-                ],
-              },
-            ]}
+            style={[styles.ball, { transform: [{ translateY: ballPosY }] }]}
           >
             <Text style={styles.ballEmoji}>⚾</Text>
           </Animated.View>
@@ -247,11 +220,11 @@ export default function GameScreen() {
       {/* Batter info */}
       <View style={styles.batterInfo}>
         <Text style={styles.batterName}>
-          {gameState.currentBatter?.name ?? '---'} #{gameState.currentBatter?.number}
+          {gameState.currentBatter?.name ?? '---'} #{gameState.currentBatter?.number ?? ''}
         </Text>
         <Text style={styles.batterStats}>
-          AVG {gameState.currentBatter?.battingAvg.toFixed(3).slice(1)} |
-          OBP {gameState.currentBatter?.OBP.toFixed(3).slice(1)}
+          AVG {gameState.currentBatter?.battingAvg ? gameState.currentBatter.battingAvg.toFixed(3).slice(1) : '---'} |
+          OBP {gameState.currentBatter?.OBP ? gameState.currentBatter.OBP.toFixed(3).slice(1) : '---'}
         </Text>
       </View>
 
@@ -308,10 +281,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  scoreTeamName: {
-    fontSize: 12,
-    color: '#aaa',
+  scoreTeamLabel: {
+    fontSize: 10,
+    color: '#888',
     fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  scoreTeamName: {
+    fontSize: 11,
+    color: '#ccc',
+    marginBottom: 2,
   },
   scoreValue: {
     fontSize: 32,

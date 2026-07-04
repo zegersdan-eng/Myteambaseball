@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ImportedPlayer } from '../src/types/gameChanger';
-import { Position } from '../src/data/models';
+import { Position, Player, Team } from '../src/data/models';
+import { useTeams } from '../src/context/TeamContext';
 
 const POSITIONS: { label: string; value: Position }[] = [
   { label: 'P', value: 'P' },
@@ -48,6 +49,7 @@ const emptyForm = (): PlayerForm => ({
 
 export default function ManualRosterScreen() {
   const router = useRouter();
+  const { saveTeam, setActiveTeam } = useTeams();
   const [players, setPlayers] = useState<ImportedPlayer[]>([]);
   const [form, setForm] = useState<PlayerForm>(emptyForm());
 
@@ -89,14 +91,40 @@ export default function ManualRosterScreen() {
     setPlayers((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const confirmRoster = () => {
+  const confirmRoster = async () => {
     if (players.length === 0) {
       Alert.alert('No Players', 'Add at least one player first.');
       return;
     }
+
+    const teamId = `team-${Date.now()}`;
+    const teamPlayers: Player[] = players.map((p, i) => ({
+      id: `${teamId}-p${i + 1}`,
+      name: p.name,
+      number: p.number,
+      position: p.position as Player['position'],
+      battingAvg: p.battingAvg,
+      ERA: p.era,
+      OBP: p.obp,
+      photoURL: null,
+    }));
+
+    const newTeam: Team = {
+      id: teamId,
+      name: `Team (${players.length} players)`,
+      players: teamPlayers,
+      primaryColor: '#1a472a',
+      secondaryColor: '#c5a028',
+      jerseyURL: null,
+      teamPhotoURL: null,
+    };
+
+    await saveTeam(newTeam);
+    await setActiveTeam(newTeam);
+
     Alert.alert(
-      'Roster Saved',
-      `${players.length} players added to your team!`,
+      'Roster Saved!',
+      `${players.length} players added to "${newTeam.name}"!\n\nThey are now your active team.`,
       [{ text: 'Done', onPress: () => router.back() }]
     );
   };

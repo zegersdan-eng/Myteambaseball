@@ -15,9 +15,12 @@ import * as FileSystem from 'expo-file-system';
 import { parseCSVRoster, parseJSONRoster, generateSampleCSV } from '../src/services/rosterImportService';
 import { searchGCTeam, fetchGCRoster } from '../src/services/gameChangerService';
 import { ImportedPlayer, ImportResult } from '../src/types/gameChanger';
+import { useTeams } from '../src/context/TeamContext';
+import { Team, Player } from '../src/data/models';
 
 export default function ImportRosterScreen() {
   const router = useRouter();
+  const { saveTeam, setActiveTeam } = useTeams();
   const [gcUrl, setGcUrl] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -90,14 +93,40 @@ export default function ImportRosterScreen() {
   }, [gcUrl]);
 
   /** Use the imported players as the current team */
-  const confirmImport = useCallback(() => {
+  const confirmImport = useCallback(async () => {
     if (importedPlayers.length === 0) return;
+
+    const teamId = `team-${Date.now()}`;
+    const players: Player[] = importedPlayers.map((p, i) => ({
+      id: `${teamId}-p${i + 1}`,
+      name: p.name,
+      number: p.number,
+      position: p.position as Player['position'],
+      battingAvg: p.battingAvg,
+      ERA: p.era,
+      OBP: p.obp,
+      photoURL: p.photoURL,
+    }));
+
+    const newTeam: Team = {
+      id: teamId,
+      name: `Team (${importedPlayers.length} players)`,
+      players,
+      primaryColor: '#1a472a',
+      secondaryColor: '#c5a028',
+      jerseyURL: null,
+      teamPhotoURL: null,
+    };
+
+    await saveTeam(newTeam);
+    await setActiveTeam(newTeam);
+
     Alert.alert(
-      'Roster Imported',
-      `Successfully imported ${importedPlayers.length} players!\n\nPlayers will be available when you start a new game.`,
+      'Roster Imported!',
+      `Successfully imported ${importedPlayers.length} players to "${newTeam.name}"!\n\nThey are now your active team. You can also import more teams to play against them.`,
       [{ text: 'Great!', onPress: () => router.back() }]
     );
-  }, [importedPlayers, router]);
+  }, [importedPlayers, saveTeam, setActiveTeam, router]);
 
   /** Show sample CSV for testing */
   const showSample = useCallback(() => {
