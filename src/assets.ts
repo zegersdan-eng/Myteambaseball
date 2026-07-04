@@ -6,6 +6,33 @@ export const Assets = {
     pitcher: require('../assets/sprites/pitcher.png'),
     fielder: require('../assets/sprites/fielder.png'),
     baseRunner: require('../assets/sprites/base-runner.png'),
+    variants: {
+      skin: {
+        veryLight: require('../assets/sprites/variants/skin/skin-very-light.png'),
+        light: require('../assets/sprites/variants/skin/skin-light.png'),
+        medium: require('../assets/sprites/variants/skin/skin-medium.png'),
+        dark: require('../assets/sprites/variants/skin/skin-dark.png'),
+        deep: require('../assets/sprites/variants/skin/skin-deep.png'),
+      },
+      hair: {
+        short: require('../assets/sprites/variants/hair/hair-short.png'),
+        shortBlonde: require('../assets/sprites/variants/hair/hair-short-blonde.png'),
+        shortRed: require('../assets/sprites/variants/hair/hair-short-red.png'),
+        curly: require('../assets/sprites/variants/hair/hair-curly.png'),
+        curlyBlack: require('../assets/sprites/variants/hair/hair-curly-black.png'),
+        long: require('../assets/sprites/variants/hair/hair-long.png'),
+        longBlonde: require('../assets/sprites/variants/hair/hair-long-blonde.png'),
+        buzz: require('../assets/sprites/variants/hair/hair-buzz.png'),
+      },
+      glasses: {
+        sports: require('../assets/sprites/variants/glasses/sports-glasses.png'),
+        sunglasses: require('../assets/sprites/variants/glasses/sunglasses.png'),
+      },
+      handedness: {
+        badgeL: require('../assets/sprites/variants/handedness/badge-L.png'),
+        badgeR: require('../assets/sprites/variants/handedness/badge-R.png'),
+      },
+    },
   },
 
   field: require('../assets/field/baseball-field.png'),

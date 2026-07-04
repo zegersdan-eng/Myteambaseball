@@ -15,6 +15,7 @@ import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
 import { Assets } from '../src/assets';
 import { saveGameResult, GameResult } from '../src/services/gameHistoryService';
+import PlayerSprite from '../src/components/PlayerSprite';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_INNINGS = 6;
@@ -23,10 +24,9 @@ type PitchResult = 'ball' | 'strike' | 'foul' | 'hit' | 'homeRun';
 
 export default function GameScreen() {
   const router = useRouter();
-  const { opponentId, opponentName } = useLocalSearchParams<{ opponentId?: string; opponentName?: string }>();
+  const { opponentId } = useLocalSearchParams<{ opponentId?: string }>();
   const { activeTeam, allTeams } = useTeams();
 
-  // Determine teams: home = active, away = opponent (or first non-active team)
   const opponentTeam = opponentId
     ? allTeams.find((t) => t.id === opponentId)
     : allTeams.find((t) => t.id !== activeTeam?.id);
@@ -35,235 +35,191 @@ export default function GameScreen() {
   const effectiveAwayTeam = opponentTeam || allTeams.find((t) => t.id !== activeTeam?.id);
 
   const [gameState, setGameState] = useState<GameState>({
-    inning: 1,
-    isTop: true,
-    outs: 0,
-    balls: 0,
-    strikes: 0,
-    homeScore: 0,
-    awayScore: 0,
-    isGameOver: false,
-    currentPitcher: null,
-    currentBatter: null,
+    inning: 1, isTop: true, outs: 0, balls: 0, strikes: 0,
+    homeScore: 0, awayScore: 0, isGameOver: false,
+    currentPitcher: null, currentBatter: null,
   });
   const [currentResult, setCurrentResult] = useState<string | null>(null);
-  const [lastPitchResult, setLastPitchResult] = useState<PitchResult | null>(null);
   const [batterIndex, setBatterIndex] = useState(0);
   const [inningHistory, setInningHistory] = useState<string[]>([]);
   const [showRecap, setShowRecap] = useState(false);
   const [finalScores, setFinalScores] = useState({ home: 0, away: 0 });
+  const [lastSwingResult, setLastSwingResult] = useState<PitchResult | null>(null);
+  const [pitchingMeter, setPitchingMeter] = useState(50);
+  const [isPitching, setIsPitching] = useState(false);
+  const [pitchTarget, setPitchTarget] = useState<number>(0);
 
-  const ballPosY = useRef(new Animated.Value(0)).current;
+  const ballAnim = useRef(new Animated.Value(0)).current;
   const swingAnim = useRef(new Animated.Value(0)).current;
-
-  // Track if we've already triggered recap for this game-over state
+  const meterAnim = useRef(new Animated.Value(0)).current;
   const recapTriggeredRef = useRef(false);
+  const meterIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /** Save game result and show recap */
   const triggerEndGame = useCallback(async (state: GameState) => {
     if (recapTriggeredRef.current) return;
     recapTriggeredRef.current = true;
-
-    const finalHome = state.homeScore;
-    const finalAway = state.awayScore;
-    setFinalScores({ home: finalHome, away: finalAway });
+    setFinalScores({ home: state.homeScore, away: state.awayScore });
     setShowRecap(true);
-
     if (effectiveHomeTeam && effectiveAwayTeam) {
-      const result: GameResult = {
-        id: `game-${Date.now()}`,
-        timestamp: Date.now(),
-        teamId: effectiveHomeTeam.id,
-        opponentId: effectiveAwayTeam.id,
-        teamScore: finalHome,
-        opponentScore: finalAway,
-        won: finalHome > finalAway,
-        innings: state.inning,
-      };
-      await saveGameResult(result);
+      await saveGameResult({
+        id: `game-${Date.now()}`, timestamp: Date.now(),
+        teamId: effectiveHomeTeam.id, opponentId: effectiveAwayTeam.id,
+        teamScore: state.homeScore, opponentScore: state.awayScore,
+        won: state.homeScore > state.awayScore, innings: state.inning,
+      });
     }
   }, [effectiveHomeTeam, effectiveAwayTeam]);
 
-  /** Auto-trigger recap when game ends */
-  useEffect(() => {
-    if (gameState.isGameOver) {
-      triggerEndGame(gameState);
-    }
-  }, [gameState.isGameOver, gameState, triggerEndGame]);
+  const handleForfeit = useCallback(() => setGameState((p) => ({ ...p, isGameOver: true })), []);
 
-  /** Forfeit button handler */
-  const handleForfeit = useCallback(() => {
-    setGameState((prev) => ({ ...prev, isGameOver: true }));
-  }, []);
+  useEffect(() => { if (gameState.isGameOver) triggerEndGame(gameState); }, [gameState.isGameOver, gameState, triggerEndGame]);
 
-  /** Set pitcher/batter from current teams */
+  // Set pitcher/batter
   useEffect(() => {
     if (effectiveHomeTeam && effectiveAwayTeam && !gameState.isGameOver) {
       const battingTeam = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
       const pitchingTeam = gameState.isTop ? effectiveHomeTeam : effectiveAwayTeam;
       const pitcher = pitchingTeam.players.find((p) => p.position === 'P') || pitchingTeam.players[0];
-
       const batter = battingTeam.players[batterIndex % battingTeam.players.length];
-
-      setGameState((prev) => ({
-        ...prev,
-        currentPitcher: pitcher,
-        currentBatter: batter,
-      }));
+      setGameState((p) => ({ ...p, currentPitcher: pitcher, currentBatter: batter }));
     }
   }, [effectiveHomeTeam, effectiveAwayTeam, gameState.isTop, batterIndex, gameState.isGameOver]);
 
-  /** Determine pitch outcome based on batter/pitcher stats */
-  const simulatePitch = useCallback((): PitchResult => {
+  const simulatePitch = useCallback((aimAccuracy: number): PitchResult => {
     const batter = gameState.currentBatter;
     const pitcher = gameState.currentPitcher;
     if (!batter || !pitcher) return 'ball';
-
     const hitChance = batter.battingAvg * 0.8 + batter.OBP * 0.2;
-    const pitchSpeed = Math.min(1, pitcher.ERA > 0 ? pitcher.ERA / 5 : 0.3);
-
+    const pitchAccuracy = Math.abs(aimAccuracy - 50) / 50;
+    const pitchQuality = Math.max(0, 1 - pitchAccuracy * 0.6 - (pitcher.ERA > 0 ? pitcher.ERA / 10 : 0.2));
     const roll = Math.random();
-    if (roll < hitChance * 0.15) return 'homeRun';
-    if (roll < hitChance * 0.45) return 'hit';
-    if (roll < hitChance * 0.55) return 'foul';
-    if (roll < 0.65 + pitchSpeed * 0.2) return 'strike';
+    if (roll < pitchQuality * 0.2) return 'strike';
+    if (roll < pitchQuality * 0.35) return 'strike';
+    if (roll < 0.5) return 'ball';
+    if (roll < hitChance * 0.15 + 0.5) return 'homeRun';
+    if (roll < hitChance * 0.45 + 0.5) return 'hit';
+    if (roll < hitChance * 0.55 + 0.5) return 'foul';
+    if (roll < 0.7) return 'strike';
     return 'ball';
   }, [gameState]);
 
-  /** Handle an out — increment outs, flip inning at 3 outs, check game-over */
   const handleOut = useCallback((prev: GameState): GameState => {
     const newOuts = prev.outs + 1;
     if (newOuts >= 3) {
       const wasTop = prev.isTop;
       const nextInning = wasTop ? prev.inning : prev.inning + 1;
-
-      // GAME OVER: Home team leads after top of 6th (or later) → skip bottom half
-      if (wasTop && prev.inning >= MAX_INNINGS && prev.homeScore > prev.awayScore) {
-        return {
-          ...prev,
-          outs: 0,
-          balls: 0,
-          strikes: 0,
-          isGameOver: true,
-        };
-      }
-
-      // GAME OVER: Completed bottom of 6th (or later) and not tied
-      if (!wasTop && nextInning > MAX_INNINGS && prev.homeScore !== prev.awayScore) {
-        return {
-          ...prev,
-          outs: 0,
-          balls: 0,
-          strikes: 0,
-          isGameOver: true,
-        };
-      }
-
-      // Tied after MAX_INNINGS → extra innings (continue playing)
-      // Normal inning flip
-      return {
-        ...prev,
-        outs: 0,
-        balls: 0,
-        strikes: 0,
-        isTop: !wasTop,
-        inning: nextInning,
-        currentBatter: null,
-      };
+      if (wasTop && prev.inning >= MAX_INNINGS && prev.homeScore > prev.awayScore)
+        return { ...prev, outs: 0, balls: 0, strikes: 0, isGameOver: true };
+      if (!wasTop && nextInning > MAX_INNINGS && prev.homeScore !== prev.awayScore)
+        return { ...prev, outs: 0, balls: 0, strikes: 0, isGameOver: true };
+      return { ...prev, outs: 0, balls: 0, strikes: 0, isTop: !wasTop, inning: nextInning, currentBatter: null };
     }
     return { ...prev, outs: newOuts, balls: 0, strikes: 0 };
   }, []);
 
-  /** Handle a swing */
   const handleSwing = useCallback(() => {
     if (gameState.isGameOver) return;
-
     Animated.sequence([
       Animated.timing(swingAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
       Animated.timing(swingAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
     ]).start();
 
-    const result = simulatePitch();
-    setLastPitchResult(result);
+    const result = lastSwingResult || simulatePitch(pitchingMeter);
+    setLastSwingResult(result);
 
     let resultText = '';
     switch (result) {
       case 'ball':
-        resultText = 'Ball!';
-        setGameState((prev) => {
-          const newBalls = prev.balls + 1;
-          if (newBalls >= 4) return { ...prev, balls: 0, strikes: 0 };
-          return { ...prev, balls: newBalls };
-        });
+        resultText = 'Ball!'; setGameState((p) => { const nb = p.balls + 1; return nb >= 4 ? { ...p, balls: 0, strikes: 0 } : { ...p, balls: nb }; });
         break;
       case 'strike':
-        resultText = 'Strike!';
-        setGameState((prev) => {
-          const newStrikes = prev.strikes + 1;
-          if (newStrikes >= 3) return handleOut(prev);
-          return { ...prev, strikes: newStrikes };
-        });
+        resultText = 'Strike!'; setGameState((p) => { const ns = p.strikes + 1; return ns >= 3 ? handleOut(p) : { ...p, strikes: ns }; });
         break;
       case 'foul':
-        resultText = 'Foul ball!';
-        setGameState((prev) => {
-          if (prev.strikes < 2) return { ...prev, strikes: prev.strikes + 1 };
-          return prev;
-        });
+        resultText = 'Foul ball!'; setGameState((p) => p.strikes < 2 ? { ...p, strikes: p.strikes + 1 } : p);
         break;
       case 'hit':
-        resultText = 'Hit! 🏃';
-        setGameState((prev) => ({
-          ...prev,
-          balls: 0,
-          strikes: 0,
-          ...(prev.isTop
-            ? { awayScore: prev.awayScore + 1 }
-            : { homeScore: prev.homeScore + 1 }
-          ),
-        }));
+        resultText = 'Hit! 🏃'; setGameState((p) => ({ ...p, balls: 0, strikes: 0, ...(p.isTop ? { awayScore: p.awayScore + 1 } : { homeScore: p.homeScore + 1 }) }));
         break;
       case 'homeRun':
-        resultText = 'HOME RUN! ⚾✨';
-        setGameState((prev) => ({
-          ...prev,
-          balls: 0,
-          strikes: 0,
-          ...(prev.isTop
-            ? { awayScore: prev.awayScore + 2 }
-            : { homeScore: prev.homeScore + 2 }
-          ),
-        }));
+        resultText = 'HOME RUN! ⚾✨'; setIsPitching(false);
+        setGameState((p) => ({ ...p, balls: 0, strikes: 0, ...(p.isTop ? { awayScore: p.awayScore + 2 } : { homeScore: p.homeScore + 2 }) }));
         break;
     }
-
     setCurrentResult(resultText);
-    setInningHistory((prev) => [...prev, resultText]);
-    ballPosY.setValue(0);
-    swingAnim.setValue(0);
-  }, [gameState, simulatePitch, swingAnim, ballPosY, handleOut]);
+    setInningHistory((p) => [...p, resultText]);
+  }, [gameState, simulatePitch, swingAnim, lastSwingResult, pitchingMeter, handleOut]);
 
-  /** Advance to next batter */
+  // Pitching control: tap to pitch, starts timing meter
+  const startPitch = useCallback(() => {
+    if (gameState.isGameOver) return;
+    setIsPitching(true);
+    setPitchingMeter(0);
+    setCurrentResult(null);
+    let dir = 1;
+    let val = 0;
+    if (meterIntervalRef.current) clearInterval(meterIntervalRef.current);
+    meterIntervalRef.current = setInterval(() => {
+      val += dir * 5;
+      if (val >= 100) dir = -1;
+      if (val <= 0) dir = 1;
+      setPitchingMeter(val);
+    }, 30);
+    // Random target zone
+    setPitchTarget(30 + Math.random() * 40);
+  }, [gameState.isGameOver]);
+
+  const releasePitch = useCallback(() => {
+    if (!isPitching) return;
+    if (meterIntervalRef.current) clearInterval(meterIntervalRef.current);
+    setIsPitching(false);
+    const accuracy = Math.abs(pitchingMeter - pitchTarget);
+    const result = simulatePitch(pitchingMeter);
+    setLastSwingResult(result);
+
+    // Animate ball
+    Animated.timing(ballAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start(() => {
+      ballAnim.setValue(0);
+    });
+
+    let resultText = '';
+    switch (result) {
+      case 'ball': resultText = 'Ball!'; break;
+      case 'strike': resultText = 'Strike!'; break;
+      case 'foul': resultText = 'Foul ball!'; break;
+      case 'hit': resultText = 'Hit! 🏃'; break;
+      case 'homeRun': resultText = 'HOME RUN! ⚾✨'; break;
+    }
+    setCurrentResult(resultText);
+    setInningHistory((p) => [...p, `⚾ ${resultText}`]);
+
+    // Apply game state changes
+    setGameState((prev) => {
+      switch (result) {
+        case 'ball': { const nb = prev.balls + 1; return nb >= 4 ? { ...prev, balls: 0, strikes: 0 } : { ...prev, balls: nb }; }
+        case 'strike': { const ns = prev.strikes + 1; return ns >= 3 ? handleOut(prev) : { ...prev, strikes: ns }; }
+        case 'foul': return prev.strikes < 2 ? { ...prev, strikes: prev.strikes + 1 } : prev;
+        case 'hit': return { ...prev, balls: 0, strikes: 0, ...(prev.isTop ? { awayScore: prev.awayScore + 1 } : { homeScore: prev.homeScore + 1 }) };
+        case 'homeRun': return { ...prev, balls: 0, strikes: 0, ...(prev.isTop ? { awayScore: prev.awayScore + 2 } : { homeScore: prev.homeScore + 2 }) };
+        default: return prev;
+      }
+    });
+  }, [isPitching, pitchingMeter, pitchTarget, simulatePitch, ballAnim, handleOut]);
+
   const nextBatter = useCallback(() => {
     const team = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
     if (!team) return;
-    const nextIndex = (batterIndex + 1) % team.players.length;
-    setBatterIndex(nextIndex);
+    setBatterIndex((i) => (i + 1) % team.players.length);
     setCurrentResult(null);
-    setLastPitchResult(null);
-  }, [batterIndex, gameState.isTop, effectiveHomeTeam, effectiveAwayTeam]);
+    setLastSwingResult(null);
+  }, [gameState.isTop, effectiveHomeTeam, effectiveAwayTeam]);
 
   const homeName = effectiveHomeTeam?.name ?? 'HOME';
   const awayName = effectiveAwayTeam?.name ?? 'AWAY';
-
-  // Build half-inning label with extra innings indicator
-  const inningLabel = gameState.inning > MAX_INNINGS
-    ? `${gameState.isTop ? '▲' : '▼'} EXTRA ${gameState.inning - MAX_INNINGS}`
-    : `${gameState.isTop ? '▲' : '▼'} INNING ${gameState.inning}`;
+  const inningLabel = gameState.inning > MAX_INNINGS ? `${gameState.isTop ? '▲' : '▼'} EXTRA ${gameState.inning - MAX_INNINGS}` : `${gameState.isTop ? '▲' : '▼'} INNING ${gameState.inning}`;
 
   return (
     <View style={styles.container}>
-      {/* Scoreboard */}
       <ImageBackground source={Assets.ui.scoreboard} style={styles.scoreboard} imageStyle={styles.scoreboardBg}>
         <View style={styles.scoreRow}>
           <View style={styles.scoreTeam}>
@@ -273,12 +229,8 @@ export default function GameScreen() {
           </View>
           <View style={styles.scoreInning}>
             <Text style={styles.inningLabel}>{inningLabel}</Text>
-            <View style={styles.countContainer}>
-              <Text style={styles.countText}>
-                {gameState.balls} - {gameState.strikes} - {gameState.outs}
-              </Text>
-              <Text style={styles.countLabel}>B - S - O</Text>
-            </View>
+            <Text style={styles.countText}>{gameState.balls} - {gameState.strikes} - {gameState.outs}</Text>
+            <Text style={styles.countLabel}>B - S - O</Text>
           </View>
           <View style={styles.scoreTeam}>
             <Text style={styles.scoreTeamLabel}>HOME</Text>
@@ -288,114 +240,103 @@ export default function GameScreen() {
         </View>
       </ImageBackground>
 
-      {/* Baseball Field with real sprites */}
       <ImageBackground source={Assets.field} style={styles.field} imageStyle={styles.fieldBg}>
-        <View style={styles.diamond}>
-          {/* Pitcher */}
-          <View style={styles.pitcherMound}>
-            <Image source={Assets.sprites.pitcher} style={styles.spriteMedium} resizeMode="contain" />
-            <Text style={styles.spriteLabel}>
-              {gameState.currentPitcher?.name.split(' ').pop() ?? 'P'}
-            </Text>
-          </View>
-          {/* Batter */}
-          <View style={styles.batterBox}>
-            <Image source={Assets.sprites.batter} style={styles.spriteLarge} resizeMode="contain" />
-            <Text style={styles.spriteLabel}>
-              {gameState.currentBatter?.name.split(' ').pop() ?? 'B'}
-            </Text>
-          </View>
-          {/* Fielders positioned on the diamond */}
-          <View style={[styles.fielderPos, { top: '5%', left: '20%' }]}>
-            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
-          </View>
-          <View style={[styles.fielderPos, { top: '5%', right: '20%' }]}>
-            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
-          </View>
-          <View style={[styles.fielderPos, { top: '12%', left: '35%' }]}>
-            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
-          </View>
-          <View style={[styles.fielderPos, { top: '12%', right: '35%' }]}>
-            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
-          </View>
-          {/* Animated ball */}
-          <Animated.View
-            style={[styles.ball, { transform: [{ translateY: ballPosY }] }]}
-          >
-            <Image source={Assets.ui.baseballIcon} style={styles.ballImage} resizeMode="contain" />
-          </Animated.View>
+        {/* Pitcher area */}
+        <View style={[styles.playerArea, { top: '20%' }]}>
+          {gameState.currentPitcher && (
+            <PlayerSprite
+              player={gameState.currentPitcher}
+              spriteKey="pitcher"
+              size={100}
+              flipHorizontal={gameState.currentPitcher.throwsHand === 'left'}
+            />
+          )}
+          <Text style={styles.spriteLabel}>
+            {gameState.currentPitcher?.name.split(' ').pop() ?? 'P'}
+          </Text>
         </View>
+
+        {/* Batter area */}
+        <View style={[styles.playerArea, { bottom: '10%' }]}>
+          {gameState.currentBatter && (
+            <PlayerSprite
+              player={gameState.currentBatter}
+              spriteKey="batter"
+              size={100}
+              flipHorizontal={gameState.currentBatter.batsHand === 'left'}
+            />
+          )}
+          <Text style={styles.spriteLabel}>
+            {gameState.currentBatter?.name.split(' ').pop() ?? 'B'}
+          </Text>
+        </View>
+
+        {/* Pitching meter */}
+        {isPitching && (
+          <View style={styles.meterContainer}>
+            <View style={styles.meterTrack}>
+              <View style={[styles.meterTarget, { left: `${pitchTarget}%` }]} />
+              <View style={[styles.meterNeedle, { left: `${pitchingMeter}%` }]} />
+            </View>
+            <Text style={styles.meterHint}>Release! Aim for the gold zone</Text>
+          </View>
+        )}
+
+        {/* Ball animation */}
+        <Animated.View style={[styles.ball, { transform: [{ translateY: ballAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -120] }) }] }]}>
+          <Image source={Assets.ui.baseballIcon} style={styles.ballImage} />
+        </Animated.View>
       </ImageBackground>
 
-      {/* Batter info */}
       <View style={styles.batterInfo}>
-        <Text style={styles.batterName}>
-          {gameState.currentBatter?.name ?? '---'} #{gameState.currentBatter?.number ?? ''}
-        </Text>
+        <Text style={styles.batterName}>{gameState.currentBatter?.name ?? '---'} #{gameState.currentBatter?.number ?? ''}</Text>
         <Text style={styles.batterStats}>
-          AVG {gameState.currentBatter?.battingAvg ? gameState.currentBatter.battingAvg.toFixed(3).slice(1) : '---'} |
-          OBP {gameState.currentBatter?.OBP ? gameState.currentBatter.OBP.toFixed(3).slice(1) : '---'}
+          AVG {gameState.currentBatter?.battingAvg?.toFixed(3).slice(1) ?? '---'} | OBP {gameState.currentBatter?.OBP?.toFixed(3).slice(1) ?? '---'}
+          {gameState.currentBatter?.batsHand === 'left' ? ' 🖐️ L' : ' 🖐️ R'}
         </Text>
       </View>
 
-      {/* Result banner */}
       {currentResult && (
-        <View style={styles.resultBanner}>
-          <Text style={styles.resultText}>{currentResult}</Text>
-        </View>
+        <View style={styles.resultBanner}><Text style={styles.resultText}>{currentResult}</Text></View>
       )}
 
-      {/* Controls */}
+      {/* Controls row */}
       <View style={styles.controls}>
+        {!isPitching ? (
+          <TouchableOpacity style={styles.pitchBtn} onPress={startPitch} activeOpacity={0.7}>
+            <Text style={styles.pitchBtnText}>⚾ PITCH!</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.releaseBtn} onPress={releasePitch} activeOpacity={0.7}>
+            <Text style={styles.releaseBtnText}>✊ RELEASE!</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={styles.swingBtn} onPress={handleSwing} activeOpacity={0.7}>
-          <Text style={styles.swingBtnText}>SWING!</Text>
+          <Text style={styles.swingBtnText}>🏏 SWING!</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.nextBtn} onPress={nextBatter}>
-          <Text style={styles.nextBtnText}>Next Batter →</Text>
+          <Text style={styles.nextBtnText}>→</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Inning History */}
       <View style={styles.history}>
-        <Text style={styles.historyLabel}>Recent plays:</Text>
-        <Text style={styles.historyText}>
-          {inningHistory.slice(-5).join('  •  ') || 'Tap SWING to start!'}
-        </Text>
+        <Text style={styles.historyText}>{inningHistory.slice(-3).join('  •  ') || 'Tap PITCH or SWING to start!'}</Text>
       </View>
 
-      {/* Forfeit button (small, discreet) */}
       <TouchableOpacity style={styles.forfeitBtn} onPress={handleForfeit}>
-        <Text style={styles.forfeitBtnText}>Forfeit Game</Text>
+        <Text style={styles.forfeitBtnText}>Forfeit</Text>
       </TouchableOpacity>
 
-      {/* Game Recap Modal — auto-triggered when game ends */}
       <Modal visible={showRecap} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Game Over!</Text>
-            <Text style={styles.modalVS}>
-              {homeName} vs {awayName}
-            </Text>
-            <Text style={styles.modalScore}>
-              {finalScores.home} - {finalScores.away}
-            </Text>
-            <Text style={styles.modalWarning}>
-              {gameState.inning > MAX_INNINGS ? 'Extra Innings' : ''}
-            </Text>
+            <Text style={styles.modalScore}>{finalScores.home} - {finalScores.away}</Text>
             <Text style={styles.modalWinner}>
-              {finalScores.home > finalScores.away
-                ? `🏆 ${homeName} Wins!`
-                : finalScores.away > finalScores.home
-                ? `🏆 ${awayName} Wins!`
-                : '🤝 Tie Game!'}
+              {finalScores.home > finalScores.away ? `🏆 ${homeName} Wins!` :
+               finalScores.away > finalScores.home ? `🏆 ${awayName} Wins!` : '🤝 Tie!'}
             </Text>
-            <Text style={styles.modalDetail}>
-              After {gameState.inning} inning{gameState.inning !== 1 ? 's' : ''}
-              {gameState.inning > MAX_INNINGS ? ' (extra innings)' : ''}
-            </Text>
-            <Text style={styles.modalHistory}>
-              {inningHistory.slice(-10).join('  •  ')}
-            </Text>
+            <Text style={styles.modalDetail}>{gameState.inning} innings</Text>
             <TouchableOpacity style={styles.modalBtn} onPress={() => router.back()}>
               <Text style={styles.modalBtnText}>Back to Home</Text>
             </TouchableOpacity>
@@ -407,291 +348,53 @@ export default function GameScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0a3d1a',
-  },
-  // Scoreboard styling
-  scoreboard: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    paddingTop: 44,
-    minHeight: 100,
-  },
-  scoreboardBg: {
-    resizeMode: 'stretch',
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  scoreTeam: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  scoreTeamLabel: {
-    fontSize: 10,
-    color: '#FCD34D',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  scoreTeamName: {
-    fontSize: 11,
-    color: '#ffffff',
-    marginBottom: 2,
-    fontWeight: '600',
-  },
-  scoreValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  scoreInning: {
-    alignItems: 'center',
-    flex: 1.5,
-  },
-  inningLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#F59E0B',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  countContainer: {
-    alignItems: 'center',
-  },
-  countText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  countLabel: {
-    fontSize: 11,
-    color: '#FCD34D',
-  },
-  // Field styling
-  field: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fieldBg: {
-    resizeMode: 'cover',
-  },
-  diamond: {
-    width: SCREEN_WIDTH * 0.8,
-    height: SCREEN_WIDTH * 0.8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  pitcherMound: {
-    position: 'absolute',
-    top: '18%',
-    alignItems: 'center',
-  },
-  batterBox: {
-    position: 'absolute',
-    bottom: '8%',
-    alignItems: 'center',
-  },
-  fielderPos: {
-    position: 'absolute',
-  },
-  ball: {
-    position: 'absolute',
-    top: '22%',
-    alignSelf: 'center',
-  },
-  // Sprite sizes
-  spriteLarge: {
-    width: 72,
-    height: 108,
-  },
-  spriteMedium: {
-    width: 56,
-    height: 84,
-  },
-  spriteSmall: {
-    width: 40,
-    height: 60,
-  },
-  spriteLabel: {
-    fontSize: 9,
-    color: '#ffffff',
-    fontWeight: '600',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 2,
-  },
-  ballImage: {
-    width: 24,
-    height: 24,
-  },
-  batterInfo: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-  },
-  batterName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  batterStats: {
-    fontSize: 12,
-    color: '#a8d5ba',
-    marginTop: 2,
-  },
-  resultBanner: {
-    position: 'absolute',
-    top: '42%',
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 24,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  resultText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffd700',
-  },
-  controls: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  swingBtn: {
-    flex: 2,
-    backgroundColor: '#c5a028',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  swingBtnText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  nextBtn: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  nextBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  history: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    alignItems: 'center',
-  },
-  historyLabel: {
-    fontSize: 11,
-    color: '#8bb89a',
-    fontWeight: '600',
-  },
-  historyText: {
-    fontSize: 12,
-    color: '#c5d9c8',
-    marginTop: 2,
-  },
-  forfeitBtn: {
-    alignSelf: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: 'rgba(255,50,50,0.15)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,100,100,0.3)',
-  },
-  forfeitBtnText: {
-    fontSize: 12,
-    color: '#ff7777',
-    fontWeight: '500',
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCard: {
-    backgroundColor: '#1a1a2e',
-    borderRadius: 20,
-    padding: 28,
-    alignItems: 'center',
-    width: '85%',
-    borderWidth: 2,
-    borderColor: '#c5a028',
-  },
-  modalTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginBottom: 8,
-  },
-  modalVS: {
-    fontSize: 14,
-    color: '#aaa',
-    marginBottom: 4,
-  },
-  modalScore: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginVertical: 8,
-  },
-  modalWarning: {
-    fontSize: 13,
-    color: '#F59E0B',
-    fontWeight: '600',
-    marginBottom: 4,
-    minHeight: 20,
-  },
-  modalWinner: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffd700',
-    marginBottom: 8,
-  },
-  modalDetail: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 12,
-  },
-  modalHistory: {
-    fontSize: 12,
-    color: '#aaa',
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 18,
-  },
-  modalBtn: {
-    backgroundColor: '#c5a028',
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  modalBtnText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+  container: { flex: 1, backgroundColor: '#0a3d1a' },
+  scoreboard: { paddingVertical: 8, paddingHorizontal: 12, paddingTop: 44, minHeight: 100 },
+  scoreboardBg: { resizeMode: 'stretch' },
+  scoreRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  scoreTeam: { alignItems: 'center', flex: 1 },
+  scoreTeamLabel: { fontSize: 10, color: '#FCD34D', fontWeight: '600', textTransform: 'uppercase' },
+  scoreTeamName: { fontSize: 11, color: '#fff', marginBottom: 2, fontWeight: '600' },
+  scoreValue: { fontSize: 32, fontWeight: 'bold', color: '#fff' },
+  scoreInning: { alignItems: 'center', flex: 1.5 },
+  inningLabel: { fontSize: 14, fontWeight: 'bold', color: '#F59E0B', marginBottom: 4, textAlign: 'center' },
+  countText: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+  countLabel: { fontSize: 11, color: '#FCD34D' },
+  field: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fieldBg: { resizeMode: 'cover' },
+  playerArea: { position: 'absolute', alignItems: 'center' },
+  spriteLabel: { fontSize: 9, color: '#fff', fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 4, paddingVertical: 1, borderRadius: 4, overflow: 'hidden', marginTop: 2 },
+  meterContainer: { position: 'absolute', top: '45%', left: '10%', right: '10%', alignItems: 'center' },
+  meterTrack: { width: '100%', height: 20, backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 10, position: 'relative', overflow: 'hidden' },
+  meterTarget: { position: 'absolute', width: 20, height: 20, backgroundColor: '#F59E0B', borderRadius: 10, marginLeft: -10 },
+  meterNeedle: { position: 'absolute', width: 4, height: 20, backgroundColor: '#fff', borderRadius: 2, marginLeft: -2 },
+  meterHint: { fontSize: 10, color: '#ffd700', marginTop: 4 },
+  ball: { position: 'absolute', top: '30%', alignSelf: 'center' },
+  ballImage: { width: 20, height: 20 },
+  batterInfo: { alignItems: 'center', paddingVertical: 6, backgroundColor: 'rgba(0,0,0,0.3)' },
+  batterName: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  batterStats: { fontSize: 11, color: '#a8d5ba', marginTop: 2 },
+  resultBanner: { position: 'absolute', top: '42%', alignSelf: 'center', backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 24, paddingVertical: 8, borderRadius: 16, zIndex: 10 },
+  resultText: { fontSize: 20, fontWeight: 'bold', color: '#ffd700' },
+  controls: { flexDirection: 'row', padding: 10, gap: 8 },
+  pitchBtn: { flex: 1, backgroundColor: '#1A56DB', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  pitchBtnText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  releaseBtn: { flex: 1, backgroundColor: '#E02424', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  releaseBtnText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  swingBtn: { flex: 1, backgroundColor: '#c5a028', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  swingBtnText: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
+  nextBtn: { width: 48, backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  nextBtnText: { fontSize: 18, fontWeight: '600', color: '#fff' },
+  history: { paddingHorizontal: 16, paddingVertical: 4, alignItems: 'center' },
+  historyText: { fontSize: 11, color: '#c5d9c8', textAlign: 'center' },
+  forfeitBtn: { alignSelf: 'center', paddingVertical: 4, paddingHorizontal: 12, marginBottom: 4, backgroundColor: 'rgba(255,50,50,0.15)', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,100,100,0.3)' },
+  forfeitBtnText: { fontSize: 11, color: '#ff7777', fontWeight: '500' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center' },
+  modalCard: { backgroundColor: '#1a1a2e', borderRadius: 20, padding: 28, alignItems: 'center', width: '85%', borderWidth: 2, borderColor: '#c5a028' },
+  modalTitle: { fontSize: 28, fontWeight: 'bold', color: '#ffd700', marginBottom: 8 },
+  modalScore: { fontSize: 48, fontWeight: 'bold', color: '#fff', marginVertical: 8 },
+  modalWinner: { fontSize: 20, fontWeight: 'bold', color: '#ffd700', marginBottom: 8 },
+  modalDetail: { fontSize: 13, color: '#888', marginBottom: 20 },
+  modalBtn: { backgroundColor: '#c5a028', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12 },
+  modalBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });
