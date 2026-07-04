@@ -1,0 +1,186 @@
+{
+  "game": "My Team Baseball",
+  "version": "1.0.0",
+  "author": "Game Designer / Artist",
+  "date": "2026-07-04",
+  "style": "Colorful, cartoonish, kid-friendly (Wii Sports inspired)",
+  "resolution_notes": {
+    "1x": "Base resolution for standard displays",
+    "2x": "2x for Retina displays (iPhone, Android hdpi/xhdpi)",
+    "3x": "3x for high-density displays (iPhone Plus/XR, Android xxhdpi/xxxhdpi)"
+  },
+  "assets": {
+    "logo": {
+      "description": "My Team Baseball game logo with baseball character and text",
+      "files": [
+        {
+          "path": "assets/logo/mtb-logo.png",
+          "resolution": "1024x1024",
+          "usage": "App icon, splash screen, main menu logo",
+          "source": "mtb-logo.png",
+          "notes": "Full-color logo. Resize to 512x512 for 2x, 256x256 for 1x. Crop to 1024x1024 for app icon."
+        }
+      ]
+    },
+    "sprites": {
+      "description": "Player character sprites in batting stance, pitching, fielding, and running poses",
+      "notes": "Base resolution 512x1024 (2x). 1x = 256x512, 3x = 768x1536. All PNG with transparent backgrounds.",
+      "files": [
+        {
+          "path": "assets/sprites/batter.png",
+          "resolution": "1024x1536",
+          "usage": "Batter character sprite - batting stance with bat over shoulder",
+          "source": "1024x1536 original (3x resolution)",
+          "notes": "Front-facing batter. Resize to 512x768 for 2x, 256x384 for 1x."
+        },
+        {
+          "path": "assets/sprites/pitcher.png",
+          "resolution": "1024x1536",
+          "usage": "Pitcher character sprite - mid-windup pitching motion",
+          "source": "1024x1536 original (3x resolution)",
+          "notes": "Side-facing pitcher in windup. Resize to 512x768 for 2x, 256x384 for 1x."
+        },
+        {
+          "path": "assets/sprites/fielder.png",
+          "resolution": "1024x1536",
+          "usage": "Fielder character sprite - crouched fielding position with glove",
+          "source": "1024x1536 original (3x resolution)",
+          "notes": "Front-facing fielder in ready position. Resize to 512x768 for 2x, 256x384 for 1x."
+        },
+        {
+          "path": "assets/sprites/base-runner.png",
+          "resolution": "1024x1536",
+          "usage": "Base runner character sprite - sprinting motion",
+          "source": "1024x1536 original (3x resolution)",
+          "notes": "Side-facing runner sprinting. Resize to 512x768 for 2x, 256x384 for 1x."
+        }
+      ]
+    },
+    "field": {
+      "description": "Baseball field background from top-down view",
+      "files": [
+        {
+          "path": "assets/field/baseball-field.png",
+          "resolution": "1024x1024",
+          "usage": "Game field background - top-down view with bases, mound, fence",
+          "source": "1024x1024 original",
+          "notes": "Square aspect ratio. Can be scaled to fit screen. 1x=512x512, 2x=1024x1024, 3x=1536x1536."
+        }
+      ]
+    },
+    "jerseys": {
+      "description": "Blank jersey templates for team customization",
+      "notes": "These are template shapes. The game engine should colorize/recolor these programmatically with team colors and overlay numbers/logos.",
+      "files": [
+        {
+          "path": "assets/jerseys/jersey-template-front.png",
+          "resolution": "1024x1024",
+          "usage": "Blank front-facing jersey template for team color/logo customization",
+          "source": "1024x1024 original",
+          "notes": "Base for team jersey customization. Overlay team colors and numbers programmatically. 1x=256x256, 2x=512x512, 3x=768x768."
+        },
+        {
+          "path": "assets/jerseys/jersey-template-back.png",
+          "resolution": "1024x1024",
+          "usage": "Blank back-facing jersey template for team color/number customization",
+          "source": "1024x1024 original",
+          "notes": "Base for back of jersey. Overlay player number programmatically. 1x=256x256, 2x=512x512, 3x=768x768."
+        }
+      ]
+    },
+    "ui": {
+      "description": "UI elements for menus, buttons, scoreboard, and cards",
+      "files": [
+        {
+          "path": "assets/ui/play-button.png",
+          "resolution": "1024x1024",
+          "usage": "Main PLAY button for home screen",
+          "source": "1024x1024 original",
+          "notes": "Green circular button with PLAY text. 1x=128x128, 2x=256x256, 3x=384x384."
+        },
+        {
+          "path": "assets/ui/scoreboard.png",
+          "resolution": "1536x1024",
+          "usage": "Scoreboard overlay during gameplay - shows innings, runs, hits, errors",
+          "source": "1536x1024 original",
+          "notes": "Wide aspect ratio for top of screen. 1x=768x512, 2x=1536x1024, 3x=2304x1536."
+        },
+        {
+          "path": "assets/ui/menu-background.png",
+          "resolution": "1024x1536",
+          "usage": "Main menu background scene - baseball field at sunset",
+          "source": "1024x1536 original",
+          "notes": "Portrait aspect ratio for mobile menu. 1x=512x768, 2x=1024x1536, 3x=1536x2304."
+        },
+        {
+          "path": "assets/ui/stat-card.png",
+          "resolution": "1024x1536",
+          "usage": "Player stat card UI element - batting avg, HR, RBI, ERA",
+          "source": "1024x1536 original",
+          "notes": "Portrait card. 1x=256x384, 2x=512x768, 3x=768x1152."
+        },
+        {
+          "path": "assets/ui/team-roster-ui.png",
+          "resolution": "1024x1536",
+          "usage": "Team roster screen mockup showing player list with numbers and positions",
+          "source": "1024x1536 original",
+          "notes": "Reference mockup for the roster screen layout. 1x=512x768, 2x=1024x1536."
+        },
+        {
+          "path": "assets/ui/settings-button.png",
+          "resolution": "1024x1024",
+          "usage": "Settings gear icon button for toolbar",
+          "source": "1024x1024 original",
+          "notes": "Small icon. 1x=32x32, 2x=64x64, 3x=96x96."
+        },
+        {
+          "path": "assets/ui/baseball-icon.png",
+          "resolution": "1024x1024",
+          "usage": "Small baseball icon for use in menus, buttons, stat displays",
+          "source": "1024x1024 original",
+          "notes": "Small icon. 1x=32x32, 2x=64x64, 3x=96x96."
+        }
+      ]
+    },
+    "app_icon": {
+      "description": "Mobile app icon for iOS and Android",
+      "files": [
+        {
+          "path": "assets/app-icon/app-icon.png",
+          "resolution": "1024x1024",
+          "usage": "Primary app icon - smiling baseball with cap and bat on blue background",
+          "source": "1024x1024 original",
+          "notes": "iOS: 1024x1024 (App Store), Android: 512x512 (Play Store), 192x192 (adaptive icon), 48x48 (mdpi). Resize as needed."
+        }
+      ]
+    },
+    "splash": {
+      "description": "Splash screen shown on app launch",
+      "files": [
+        {
+          "path": "assets/splash/splash-screen.png",
+          "resolution": "1024x1536",
+          "usage": "App launch/splash screen - baseball field scene with logo text",
+          "source": "1024x1536 original",
+          "notes": "Portrait mobile aspect ratio. iOS: 1242x2208 (iPhone 6/7/8 Plus), Android: based on device. Scale as needed."
+        }
+      ]
+    }
+  },
+  "color_palette": {
+    "primary_blue": "#1A56DB",
+    "secondary_red": "#E02424",
+    "accent_green": "#0E9F6E",
+    "white": "#FFFFFF",
+    "cream": "#FFF8F0",
+    "grass_green": "#4ADE80",
+    "dirt_brown": "#A16207",
+    "dark_bg": "#1E293B",
+    "gold": "#F59E0B"
+  },
+  "fonts": {
+    "headings": "Bold rounded sans-serif (e.g., Fredoka One, Nunito ExtraBold)",
+    "body": "Clean rounded sans-serif (e.g., Nunito, Quicksand)",
+    "numbers": "Monospace or sports-style numbers (e.g., Bebas Neue, Oswald)"
+  }
+}

@@ -6,14 +6,25 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Image,
+  ImageBackground,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
+import { Assets } from '../src/assets';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 type PitchResult = 'ball' | 'strike' | 'foul' | 'hit' | 'homeRun';
+
+/** Sprite key for different player positions */
+function getSpriteKey(position: string): keyof typeof Assets.sprites {
+  if (position === 'P') return 'pitcher';
+  if (['1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].includes(position)) return 'fielder';
+  if (['C'].includes(position)) return 'fielder';
+  return 'batter';
+}
 
 export default function GameScreen() {
   const router = useRouter();
@@ -51,7 +62,6 @@ export default function GameScreen() {
   // Set pitcher/batter from current teams
   useEffect(() => {
     if (effectiveHomeTeam && effectiveAwayTeam) {
-      // Top of inning = away team bats, bottom = home team bats
       const battingTeam = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
       const pitchingTeam = gameState.isTop ? effectiveHomeTeam : effectiveAwayTeam;
       const pitcher = pitchingTeam.players.find((p) => p.position === 'P') || pitchingTeam.players[0];
@@ -173,7 +183,7 @@ export default function GameScreen() {
   return (
     <View style={styles.container}>
       {/* Scoreboard */}
-      <View style={styles.scoreboard}>
+      <ImageBackground source={Assets.ui.scoreboard} style={styles.scoreboard} imageStyle={styles.scoreboardBg}>
         <View style={styles.scoreRow}>
           <View style={styles.scoreTeam}>
             <Text style={styles.scoreTeamLabel}>AWAY</Text>
@@ -197,25 +207,46 @@ export default function GameScreen() {
             <Text style={styles.scoreValue}>{gameState.homeScore}</Text>
           </View>
         </View>
-      </View>
+      </ImageBackground>
 
-      {/* Baseball Field */}
-      <View style={styles.field}>
+      {/* Baseball Field with real sprites */}
+      <ImageBackground source={Assets.field} style={styles.field} imageStyle={styles.fieldBg}>
         <View style={styles.diamond}>
-          <View style={styles.diamondInner} />
+          {/* Pitcher */}
           <View style={styles.pitcherMound}>
-            <Text style={styles.pitcherEmoji}>⛽</Text>
+            <Image source={Assets.sprites.pitcher} style={styles.spriteMedium} resizeMode="contain" />
+            <Text style={styles.spriteLabel}>
+              {gameState.currentPitcher?.name.split(' ').pop() ?? 'P'}
+            </Text>
           </View>
+          {/* Batter */}
           <View style={styles.batterBox}>
-            <Text style={styles.batterEmoji}>🏏</Text>
+            <Image source={Assets.sprites.batter} style={styles.spriteLarge} resizeMode="contain" />
+            <Text style={styles.spriteLabel}>
+              {gameState.currentBatter?.name.split(' ').pop() ?? 'B'}
+            </Text>
           </View>
+          {/* Fielders positioned on the diamond */}
+          <View style={[styles.fielderPos, { top: '5%', left: '20%' }]}>
+            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
+          </View>
+          <View style={[styles.fielderPos, { top: '5%', right: '20%' }]}>
+            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
+          </View>
+          <View style={[styles.fielderPos, { top: '12%', left: '35%' }]}>
+            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
+          </View>
+          <View style={[styles.fielderPos, { top: '12%', right: '35%' }]}>
+            <Image source={Assets.sprites.fielder} style={styles.spriteSmall} resizeMode="contain" />
+          </View>
+          {/* Animated ball */}
           <Animated.View
             style={[styles.ball, { transform: [{ translateY: ballPosY }] }]}
           >
-            <Text style={styles.ballEmoji}>⚾</Text>
+            <Image source={Assets.ui.baseballIcon} style={styles.ballImage} resizeMode="contain" />
           </Animated.View>
         </View>
-      </View>
+      </ImageBackground>
 
       {/* Batter info */}
       <View style={styles.batterInfo}>
@@ -266,11 +297,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a3d1a',
   },
+  // Scoreboard styling
   scoreboard: {
-    backgroundColor: '#1a1a2e',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    paddingTop: 48,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingTop: 44,
+    minHeight: 100,
+  },
+  scoreboardBg: {
+    resizeMode: 'stretch',
   },
   scoreRow: {
     flexDirection: 'row',
@@ -283,14 +318,15 @@ const styles = StyleSheet.create({
   },
   scoreTeamLabel: {
     fontSize: 10,
-    color: '#888',
+    color: '#FCD34D',
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   scoreTeamName: {
     fontSize: 11,
-    color: '#ccc',
+    color: '#ffffff',
     marginBottom: 2,
+    fontWeight: '600',
   },
   scoreValue: {
     fontSize: 32,
@@ -304,7 +340,7 @@ const styles = StyleSheet.create({
   inningLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#c5a028',
+    color: '#F59E0B',
     marginBottom: 4,
   },
   countContainer: {
@@ -317,53 +353,69 @@ const styles = StyleSheet.create({
   },
   countLabel: {
     fontSize: 11,
-    color: '#888',
+    color: '#FCD34D',
   },
+  // Field styling
   field: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  fieldBg: {
+    resizeMode: 'cover',
+  },
   diamond: {
-    width: SCREEN_WIDTH * 0.7,
-    height: SCREEN_WIDTH * 0.7,
-    backgroundColor: '#1a6b2e',
-    borderRadius: 8,
+    width: SCREEN_WIDTH * 0.8,
+    height: SCREEN_WIDTH * 0.8,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    borderWidth: 2,
-    borderColor: '#2a8b3e',
-  },
-  diamondInner: {
-    width: '80%',
-    height: '80%',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 4,
-    position: 'absolute',
   },
   pitcherMound: {
     position: 'absolute',
-    top: '25%',
-  },
-  pitcherEmoji: {
-    fontSize: 32,
+    top: '18%',
+    alignItems: 'center',
   },
   batterBox: {
     position: 'absolute',
-    bottom: '15%',
+    bottom: '8%',
+    alignItems: 'center',
   },
-  batterEmoji: {
-    fontSize: 36,
+  fielderPos: {
+    position: 'absolute',
   },
   ball: {
     position: 'absolute',
-    top: '20%',
+    top: '22%',
     alignSelf: 'center',
   },
-  ballEmoji: {
-    fontSize: 20,
+  // Sprite sizes
+  spriteLarge: {
+    width: 72,
+    height: 108,
+  },
+  spriteMedium: {
+    width: 56,
+    height: 84,
+  },
+  spriteSmall: {
+    width: 40,
+    height: 60,
+  },
+  spriteLabel: {
+    fontSize: 9,
+    color: '#ffffff',
+    fontWeight: '600',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginTop: 2,
+  },
+  ballImage: {
+    width: 24,
+    height: 24,
   },
   batterInfo: {
     alignItems: 'center',

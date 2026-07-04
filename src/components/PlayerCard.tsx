@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Player } from '../data/models';
+import { Assets } from '../assets';
 
 interface PlayerCardProps {
   player: Player;
@@ -8,12 +9,15 @@ interface PlayerCardProps {
   onPress?: () => void;
 }
 
-export default function PlayerCard({ player, teamColor = '#1a472a', onPress }: PlayerCardProps) {
+export default function PlayerCard({ player, teamColor = '#1A56DB', onPress }: PlayerCardProps) {
+  const displayNumber = player.number > 0 ? player.number : '—';
+
   return (
     <View style={styles.card}>
-      {/* Jersey placeholder */}
+      {/* Jersey with template + team color */}
       <View style={[styles.jerseyBadge, { backgroundColor: teamColor }]}>
-        <Text style={styles.jerseyNumber}>{player.number}</Text>
+        <Image source={Assets.jerseys.front} style={styles.jerseyImage} resizeMode="contain" />
+        <Text style={styles.jerseyNumber}>{displayNumber}</Text>
       </View>
 
       {/* Info */}
@@ -62,16 +66,25 @@ const styles = StyleSheet.create({
   },
   jerseyBadge: {
     width: 48,
-    height: 48,
+    height: 56,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  jerseyImage: {
+    width: 48,
+    height: 56,
+    position: 'absolute',
+    opacity: 0.3,
+    tintColor: '#ffffff',
   },
   jerseyNumber: {
     color: '#ffffff',
     fontSize: 20,
     fontWeight: 'bold',
+    zIndex: 1,
   },
   info: {
     flex: 1,
@@ -102,7 +115,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1a472a',
+    color: '#1A56DB',
   },
   statLabel: {
     fontSize: 10,

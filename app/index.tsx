@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ImageBackground, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTeams } from '../src/context/TeamContext';
+import { Assets } from '../src/assets';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -10,18 +11,19 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#1a472a" />
+        <ActivityIndicator size="large" color="#F59E0B" />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <ImageBackground source={Assets.ui.menuBackground} style={styles.container} resizeMode="cover">
+      {/* Overlay tint */}
+      <View style={styles.overlay} />
+
       {/* Hero */}
       <View style={styles.hero}>
-        <View style={styles.heroEmblem}>
-          <Text style={styles.heroIcon}>⚾</Text>
-        </View>
+        <Image source={Assets.logo} style={styles.heroLogo} resizeMode="contain" />
         <Text style={styles.heroTitle}>My Team Baseball</Text>
         <Text style={styles.heroSubtitle}>Play as your real team!</Text>
       </View>
@@ -37,9 +39,7 @@ export default function HomeScreen() {
           {activeTeam ? (
             <>
               <View style={[styles.teamBadge, { backgroundColor: activeTeam.primaryColor }]}>
-                <Text style={styles.teamInitials}>
-                  {activeTeam.name.split(' ').map((w: string) => w[0]).join('')}
-                </Text>
+                <Image source={Assets.ui.baseballIcon} style={styles.teamBadgeIcon} />
               </View>
               <View style={styles.activeTeamInfo}>
                 <Text style={styles.teamName}>{activeTeam.name}</Text>
@@ -58,7 +58,7 @@ export default function HomeScreen() {
       {/* Quick actions */}
       <View style={styles.quickActions}>
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: '#1a472a' }]}
+          style={[styles.actionBtn, { backgroundColor: '#1A56DB' }]}
           onPress={() => {
             if (allTeams.length > 1) {
               router.push('/select-opponent');
@@ -67,14 +67,16 @@ export default function HomeScreen() {
             }
           }}
         >
-          <Text style={styles.actionBtnText}>▶  Play Game</Text>
+          <Image source={Assets.ui.playButton} style={styles.actionBtnIcon} resizeMode="contain" />
+          <Text style={styles.actionBtnText}>Play Game</Text>
           <Text style={styles.actionBtnSub}>Choose opponent</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: '#2c3e50' }]}
           onPress={() => router.push('/import-roster')}
         >
-          <Text style={styles.actionBtnText}>📥  Import Team</Text>
+          <Image source={Assets.ui.baseballIcon} style={styles.actionBtnIconSm} resizeMode="contain" />
+          <Text style={styles.actionBtnText}>Import Team</Text>
           <Text style={styles.actionBtnSub}>CSV, JSON, or manual</Text>
         </TouchableOpacity>
       </View>
@@ -85,7 +87,8 @@ export default function HomeScreen() {
           style={styles.secondaryBtn}
           onPress={() => router.push('/manage-teams')}
         >
-          <Text style={styles.secondaryBtnText}>📋 Manage Teams ({allTeams.length})</Text>
+          <Image source={Assets.ui.settingsButton} style={styles.secondaryIcon} resizeMode="contain" />
+          <Text style={styles.secondaryBtnText}>Manage Teams ({allTeams.length})</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryBtn}
@@ -93,13 +96,15 @@ export default function HomeScreen() {
             if (activeTeam) router.push('/roster');
           }}
         >
-          <Text style={styles.secondaryBtnText}>👥 View Roster</Text>
+          <Image source={Assets.sprites.batter} style={styles.secondaryIcon} resizeMode="contain" />
+          <Text style={styles.secondaryBtnText}>View Roster</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryBtn}
           onPress={() => router.push('/settings')}
         >
-          <Text style={styles.secondaryBtnText}>⚙  Settings</Text>
+          <Image source={Assets.ui.settingsButton} style={styles.secondaryIcon} resizeMode="contain" />
+          <Text style={styles.secondaryBtnText}>Settings</Text>
         </TouchableOpacity>
       </View>
 
@@ -111,36 +116,32 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f8',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#1A56DB',
   },
   hero: {
     alignItems: 'center',
     paddingVertical: 32,
-    backgroundColor: '#1a472a',
-    paddingTop: 48,
+    paddingTop: 60,
   },
-  heroEmblem: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  heroLogo: {
+    width: 120,
+    height: 120,
     marginBottom: 12,
-  },
-  heroIcon: {
-    fontSize: 36,
   },
   heroTitle: {
     fontSize: 28,
@@ -149,17 +150,17 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     fontSize: 14,
-    color: '#a8d5ba',
+    color: '#FCD34D',
     marginTop: 4,
   },
   activeTeamCard: {
     backgroundColor: '#ffffff',
     borderRadius: 12,
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 16,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#1a472a',
+    borderColor: '#F59E0B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -185,10 +186,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  teamInitials: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  teamBadgeIcon: {
+    width: 28,
+    height: 28,
+    tintColor: '#ffffff',
   },
   activeTeamInfo: {
     flex: 1,
@@ -228,6 +229,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
   },
+  actionBtnIcon: {
+    width: 40,
+    height: 40,
+    marginBottom: 6,
+  },
+  actionBtnIconSm: {
+    width: 28,
+    height: 28,
+    marginBottom: 6,
+    tintColor: 'rgba(255,255,255,0.8)',
+  },
   actionBtnText: {
     color: '#ffffff',
     fontSize: 16,
@@ -256,8 +268,13 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 1,
   },
+  secondaryIcon: {
+    width: 24,
+    height: 24,
+    marginBottom: 4,
+  },
   secondaryBtnText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600',
     color: '#1a1a2e',
   },

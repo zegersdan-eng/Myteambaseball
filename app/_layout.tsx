@@ -9,14 +9,14 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: '#1a472a' },
+          headerStyle: { backgroundColor: '#1A56DB' },
           headerTintColor: '#ffffff',
           headerTitleStyle: { fontWeight: 'bold', fontSize: 18 },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: '#f0f4f8' },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'My Team Baseball' }} />
+        <Stack.Screen name="index" options={{ title: 'My Team Baseball', headerShown: false }} />
         <Stack.Screen name="roster" options={{ title: 'Team Roster' }} />
         <Stack.Screen name="game" options={{ title: 'Play Ball!', headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Team Settings' }} />
