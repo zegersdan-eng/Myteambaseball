@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import PlayerCard from '../src/components/PlayerCard';
-import { getMockRosters } from '../src/data/mockRoster';
 import { Player } from '../src/data/models';
+import { useTeams } from '../src/context/TeamContext';
 
 export default function RosterScreen() {
   const router = useRouter();
-  const team = getMockRosters()[0]; // First team for now
+  const { activeTeam } = useTeams();
+  const team = activeTeam;
 
   const renderPlayer = ({ item }: { item: Player }) => (
     <TouchableOpacity
@@ -16,19 +17,42 @@ export default function RosterScreen() {
     >
       <PlayerCard
         player={item}
-        teamColor={team.primaryColor}
+        teamColor={team?.primaryColor || '#1a472a'}
       />
     </TouchableOpacity>
   );
 
   const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={[styles.teamBanner, { backgroundColor: team.primaryColor }]}>
-        <Text style={styles.teamBannerName}>{team.name}</Text>
-        <Text style={styles.teamBannerRecord}>{team.players.length} players</Text>
+    <View>
+      <View style={[styles.teamBanner, { backgroundColor: team?.primaryColor || '#1a472a' }]}>
+        <Text style={styles.teamBannerName}>{team?.name || 'No Team'}</Text>
+        <Text style={styles.teamBannerRecord}>{team?.players.length || 0} players</Text>
       </View>
+      <TouchableOpacity
+        style={styles.lineupBtn}
+        onPress={() => router.push('/lineup')}
+      >
+        <Text style={styles.lineupBtnText}>🔢  Set Batting Order</Text>
+      </TouchableOpacity>
     </View>
   );
+
+  if (!team) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyTitle}>No Team Selected</Text>
+          <Text style={styles.emptyText}>Import or create a team to see the roster.</Text>
+          <TouchableOpacity
+            style={styles.importBtn}
+            onPress={() => router.push('/import-roster')}
+          >
+            <Text style={styles.importBtnText}>📥 Import Team</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -51,9 +75,6 @@ const styles = StyleSheet.create({
   list: {
     paddingBottom: 24,
   },
-  header: {
-    marginBottom: 8,
-  },
   teamBanner: {
     padding: 24,
     alignItems: 'center',
@@ -67,5 +88,53 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'rgba(255,255,255,0.7)',
     marginTop: 4,
+  },
+  lineupBtn: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  lineupBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a472a',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1a1a2e',
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  importBtn: {
+    backgroundColor: '#1a472a',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  importBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

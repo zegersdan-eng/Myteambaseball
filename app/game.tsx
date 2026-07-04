@@ -15,6 +15,7 @@ import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
 import { Assets } from '../src/assets';
 import { saveGameResult, GameResult } from '../src/services/gameHistoryService';
+import { loadLineup, getBattingOrder } from '../src/services/lineupService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -59,6 +60,8 @@ export default function GameScreen() {
   const [inningHistory, setInningHistory] = useState<string[]>([]);
   const [showRecap, setShowRecap] = useState(false);
   const [finalScores, setFinalScores] = useState({ home: 0, away: 0 });
+  const [homeLineup, setHomeLineup] = useState<string[]>([]);
+  const [awayLineup, setAwayLineup] = useState<string[]>([]);
 
   const ballPosY = useRef(new Animated.Value(0)).current;
   const swingAnim = useRef(new Animated.Value(0)).current;
@@ -85,13 +88,36 @@ export default function GameScreen() {
     }
   }, [gameState, effectiveHomeTeam, effectiveAwayTeam]);
 
+  // Load lineups for both teams
+  useEffect(() => {
+    (async () => {
+      if (effectiveHomeTeam) {
+        const saved = await loadLineup(effectiveHomeTeam.id);
+        setHomeLineup(
+          getBattingOrder(saved, effectiveHomeTeam.players.map((p) => p.id))
+        );
+      }
+      if (effectiveAwayTeam) {
+        const saved = await loadLineup(effectiveAwayTeam.id);
+        setAwayLineup(
+          getBattingOrder(saved, effectiveAwayTeam.players.map((p) => p.id))
+        );
+      }
+    })();
+  }, [effectiveHomeTeam?.id, effectiveAwayTeam?.id]);
+
   // Set pitcher/batter from current teams
   useEffect(() => {
     if (effectiveHomeTeam && effectiveAwayTeam) {
       const battingTeam = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
       const pitchingTeam = gameState.isTop ? effectiveHomeTeam : effectiveAwayTeam;
       const pitcher = pitchingTeam.players.find((p) => p.position === 'P') || pitchingTeam.players[0];
-      const batter = battingTeam.players[batterIndex % battingTeam.players.length];
+
+      // Use lineup order for batter selection
+      const lineupIds = gameState.isTop ? awayLineup : homeLineup;
+      const effectiveLineup = lineupIds.length > 0 ? lineupIds : battingTeam.players.map((p) => p.id);
+      const batterId = effectiveLineup[batterIndex % effectiveLineup.length];
+      const batter = battingTeam.players.find((p) => p.id === batterId) || battingTeam.players[batterIndex % battingTeam.players.length];
 
       setGameState((prev) => ({
         ...prev,
@@ -197,11 +223,13 @@ export default function GameScreen() {
   const nextBatter = useCallback(() => {
     const team = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
     if (!team) return;
-    const nextIndex = (batterIndex + 1) % team.players.length;
+    const lineup = gameState.isTop ? awayLineup : homeLineup;
+    const lineupLength = lineup.length > 0 ? lineup.length : team.players.length;
+    const nextIndex = (batterIndex + 1) % lineupLength;
     setBatterIndex(nextIndex);
     setCurrentResult(null);
     setLastPitchResult(null);
-  }, [batterIndex, gameState.isTop, effectiveHomeTeam, effectiveAwayTeam]);
+  }, [batterIndex, gameState.isTop, effectiveHomeTeam, effectiveAwayTeam, homeLineup, awayLineup]);
 
   const homeName = effectiveHomeTeam?.name ?? 'HOME';
   const awayName = effectiveAwayTeam?.name ?? 'AWAY';
