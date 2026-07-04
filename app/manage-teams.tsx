@@ -114,9 +114,17 @@ export default function ManageTeamsScreen() {
         renderItem={renderTeam}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <Text style={styles.headerText}>
-            Tap a team to make it your active team. Your active team is who you play as.
-          </Text>
+          <View>
+            <Text style={styles.headerText}>
+              Tap a team to make it your active team. Your active team is who you play as.
+            </Text>
+            <TouchableOpacity
+              style={styles.customizeBtn}
+              onPress={() => router.push('/customize-jerseys')}
+            >
+              <Text style={styles.customizeBtnText}>🎨  Customize Jerseys</Text>
+            </TouchableOpacity>
+          </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -253,6 +261,19 @@ const styles = StyleSheet.create({
   importBtnText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  customizeBtn: {
+    backgroundColor: '#1A56DB',
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  customizeBtnText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
   },
 });
