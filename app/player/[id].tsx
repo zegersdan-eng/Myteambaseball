@@ -1,12 +1,29 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { getPlayer, getMockRosters } from '../../src/data/mockRoster';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTeams } from '../../src/context/TeamContext';
+import { Player } from '../../src/data/models';
+import { loadAppearance } from '../../src/services/playerAppearanceService';
+import { SKIN_TONE_OPTIONS } from '../../src/services/playerAppearanceService';
 
 export default function PlayerDetailScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const team = getMockRosters()[0];
-  const player = getPlayer('team-1', id);
+  const { activeTeam } = useTeams();
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [hasAppearance, setHasAppearance] = useState(false);
+
+  useEffect(() => {
+    if (activeTeam && id) {
+      const found = activeTeam.players.find((p) => p.id === id);
+      setPlayer(found || null);
+      if (found) {
+        loadAppearance(found.id).then((a) => {
+          setHasAppearance(a.skinTone !== 'medium' || a.hairStyle !== 'short' || a.glasses || a.throwsHand !== 'right' || a.batsHand !== 'right');
+        });
+      }
+    }
+  }, [activeTeam, id]);
 
   if (!player) {
     return (
@@ -19,12 +36,14 @@ export default function PlayerDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Jersey hero */}
-      <View style={[styles.jerseyHero, { backgroundColor: team.primaryColor }]}>
+      <View style={[styles.jerseyHero, { backgroundColor: activeTeam?.primaryColor || '#1a472a' }]}>
         <View style={styles.jerseyLarge}>
           <Text style={styles.jerseyNumberLarge}>{player.number}</Text>
         </View>
         <Text style={styles.playerNameLarge}>{player.name}</Text>
-        <Text style={styles.playerPosition}>{player.position}</Text>
+        <Text style={styles.playerPosition}>
+          {player.position} {hasAppearance ? '🎨' : ''}
+        </Text>
       </View>
 
       {/* Stats card */}
@@ -73,9 +92,21 @@ export default function PlayerDetailScreen() {
         </View>
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Team</Text>
-          <Text style={styles.infoValue}>{team.name}</Text>
+          <Text style={styles.infoValue}>{activeTeam?.name || 'Unknown'}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Appearance</Text>
+          <Text style={styles.infoValue}>{hasAppearance ? '✅ Customized' : 'Default'}</Text>
         </View>
       </View>
+
+      {/* Customize Appearance button */}
+      <TouchableOpacity
+        style={styles.appearanceBtn}
+        onPress={() => router.push(`/player-appearance?playerId=${player.id}&playerName=${encodeURIComponent(player.name)}`)}
+      >
+        <Text style={styles.appearanceBtnText}>🎨 Customize Appearance</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -196,5 +227,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1a1a2e',
+  },
+  appearanceBtn: {
+    backgroundColor: '#1A56DB',
+    marginHorizontal: 16,
+    marginTop: 4,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  appearanceBtnText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
   },
 });

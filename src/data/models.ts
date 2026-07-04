@@ -11,6 +11,11 @@ export interface Player {
   ERA: number;          // 0.00 – 99.99
   OBP: number;          // 0.000 – 1.000
   photoURL: string | null;
+  skinTone?: string;    // 'light' | 'medium' | 'tan' | 'dark' | 'deep'
+  hairStyle?: string;   // 'short' | 'buzz' | 'curly' | 'long' | 'bald'
+  glasses?: boolean;
+  throwsHand?: string;  // 'left' | 'right'
+  batsHand?: string;    // 'left' | 'right' | 'switch'
 }
 
 export interface Team {
