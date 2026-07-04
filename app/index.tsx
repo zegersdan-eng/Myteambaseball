@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ImageBackground, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTeams } from '../src/context/TeamContext';
 import { Assets } from '../src/assets';
+import { hasSeenOnboarding } from './onboarding';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { activeTeam, allTeams, isLoading } = useTeams();
+
+  useEffect(() => {
+    (async () => {
+      const seen = await hasSeenOnboarding();
+      if (!seen) router.replace('/onboarding');
+    })();
+  }, []);
 
   if (isLoading) {
     return (
@@ -70,6 +78,14 @@ export default function HomeScreen() {
           <Image source={Assets.ui.playButton} style={styles.actionBtnIcon} resizeMode="contain" />
           <Text style={styles.actionBtnText}>Play Game</Text>
           <Text style={styles.actionBtnSub}>Choose opponent</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#1A56DB' }]}
+          onPress={() => router.push('/season')}
+        >
+          <Text style={{ fontSize: 28, marginBottom: 2 }}>🏆</Text>
+          <Text style={styles.actionBtnText}>Season</Text>
+          <Text style={styles.actionBtnSub}>Standings & playoffs</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: '#2c3e50' }]}

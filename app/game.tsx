@@ -9,8 +9,10 @@ import {
   Image,
   ImageBackground,
   Modal,
+  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
 import { Assets } from '../src/assets';
@@ -399,6 +401,20 @@ export default function GameScreen() {
             <TouchableOpacity style={styles.modalBtn} onPress={() => router.back()}>
               <Text style={styles.modalBtnText}>Back to Home</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.shareBtn} onPress={async () => {
+              try {
+                const isAvailable = await Sharing.isAvailableAsync();
+                if (isAvailable) {
+                  await Sharing.shareAsync(
+                    `My Team Baseball Game!\n\n${homeName} ${finalScores.home} - ${finalScores.away} ${awayName}\n${finalScores.home > finalScores.away ? `${homeName} Wins!` : finalScores.away > finalScores.home ? `${awayName} Wins!` : 'Tie!'}\n\nAfter ${gameState.inning} innings`
+                  );
+                } else {
+                  Alert.alert('Share', 'Sharing is not available on this device.');
+                }
+              } catch {}
+            }}>
+              <Text style={styles.shareBtnText}>📤 Share</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -690,6 +706,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   modalBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  shareBtn: {
+    backgroundColor: '#1A56DB',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 10,
+    width: '100%',
+    alignItems: 'center',
+  },
+  shareBtnText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
