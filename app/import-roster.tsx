@@ -12,7 +12,16 @@ import {
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { parseCSVRoster, parseJSONRoster, generateSampleCSV } from '../src/services/rosterImportService';
+import {
+  parseCSVRoster,
+  parseJSONRoster,
+  generateSampleCSV,
+  autoAssignPosition,
+  generateRandomStats,
+  autoAssignAppearance,
+  TEAM_COLORS,
+  autoAssignTeamColor,
+} from '../src/services/rosterImportService';
 import { searchGCTeam, fetchGCRoster } from '../src/services/gameChangerService';
 import { ImportedPlayer, ImportResult } from '../src/types/gameChanger';
 import { useTeams } from '../src/context/TeamContext';
@@ -26,6 +35,8 @@ export default function ImportRosterScreen() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [importedPlayers, setImportedPlayers] = useState<ImportedPlayer[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [teamName, setTeamName] = useState('');
+  const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(null);
 
   /** Handle CSV file pick + parse */
   const pickCSVFile = useCallback(async () => {
@@ -74,7 +85,6 @@ export default function ImportRosterScreen() {
     try {
       const result = await fetchGCRoster(gcUrl.trim());
       if (result.success && result.players.length > 0) {
-        // Map GC JSON to our format via the JSON parser
         const jsonStr = JSON.stringify(result.players);
         const parsed = parseJSONRoster(jsonStr);
         setImportResult(parsed);
@@ -92,28 +102,52 @@ export default function ImportRosterScreen() {
     }
   }, [gcUrl]);
 
-  /** Use the imported players as the current team */
+  /** Use the imported players as the current team — with smart auto-fill */
   const confirmImport = useCallback(async () => {
     if (importedPlayers.length === 0) return;
 
+    const name = teamName.trim() || `Team (${importedPlayers.length} players)`;
+    const colors = selectedColorIndex !== null
+      ? TEAM_COLORS[selectedColorIndex]
+      : autoAssignTeamColor(name);
+
     const teamId = `team-${Date.now()}`;
-    const players: Player[] = importedPlayers.map((p, i) => ({
-      id: `${teamId}-p${i + 1}`,
-      name: p.name,
-      number: p.number,
-      position: p.position as Player['position'],
-      battingAvg: p.battingAvg,
-      ERA: p.era,
-      OBP: p.obp,
-      photoURL: p.photoURL,
-    }));
+    const players: Player[] = importedPlayers.map((p, i) => {
+      // Fill missing position
+      const position = (p.position === 'UTIL' || !p.position)
+        ? autoAssignPosition(i, importedPlayers.length)
+        : p.position;
+
+      // Fill missing stats
+      const needsStats = p.battingAvg === 0 && p.era === 0 && p.obp === 0;
+      const stats = needsStats ? generateRandomStats() : null;
+
+      // Auto-assign appearance
+      const appearance = autoAssignAppearance();
+
+      return {
+        id: `${teamId}-p${i + 1}`,
+        name: p.name,
+        number: p.number,
+        position: position as Player['position'],
+        battingAvg: stats?.battingAvg ?? p.battingAvg,
+        ERA: position === 'P' ? (stats?.era ?? p.era) : (p.era > 0 ? p.era : 0),
+        OBP: stats?.obp ?? p.obp,
+        photoURL: p.photoURL,
+        skinTone: appearance.skinTone,
+        hairStyle: appearance.hairStyle,
+        glasses: appearance.glasses,
+        throwsHand: appearance.throwsHand,
+        batsHand: appearance.batsHand,
+      };
+    });
 
     const newTeam: Team = {
       id: teamId,
-      name: `Team (${importedPlayers.length} players)`,
+      name,
       players,
-      primaryColor: '#1a472a',
-      secondaryColor: '#c5a028',
+      primaryColor: colors.primary,
+      secondaryColor: colors.secondary,
       jerseyURL: null,
       teamPhotoURL: null,
     };
@@ -123,10 +157,10 @@ export default function ImportRosterScreen() {
 
     Alert.alert(
       'Roster Imported!',
-      `Successfully imported ${importedPlayers.length} players to "${newTeam.name}"!\n\nThey are now your active team. You can also import more teams to play against them.`,
+      `Successfully imported ${importedPlayers.length} players to "${name}"!\n\nThey are now your active team. You can also import more teams to play against them.`,
       [{ text: 'Great!', onPress: () => router.back() }]
     );
-  }, [importedPlayers, saveTeam, setActiveTeam, router]);
+  }, [importedPlayers, teamName, selectedColorIndex, saveTeam, setActiveTeam, router]);
 
   /** Show sample CSV for testing */
   const showSample = useCallback(() => {
@@ -208,18 +242,42 @@ export default function ImportRosterScreen() {
 
       {importResult && (
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>
-            Import Results
-          </Text>
+          <Text style={styles.sectionTitle}>Import Results</Text>
           <Text style={styles.resultSummary}>
             ✅ {importResult.players.length} players found
-            {importResult.errors.length > 0
-              ? `  ⚠️ ${importResult.errors.length} warnings`
-              : ''}
+            {importResult.errors.length > 0 ? ` (${importResult.errors.length} warnings)` : ''}
           </Text>
 
           {importedPlayers.length > 0 && (
             <>
+              {/* Team Name Input */}
+              <Text style={styles.label}>Team Name</Text>
+              <TextInput
+                style={styles.input}
+                value={teamName}
+                onChangeText={setTeamName}
+                placeholder={`Team (${importedPlayers.length} players)`}
+              />
+
+              {/* Team Color Selector */}
+              <Text style={styles.label}>Team Colors</Text>
+              <View style={styles.colorGrid}>
+                {TEAM_COLORS.map((c, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: c.primary },
+                      selectedColorIndex === i && styles.colorSwatchSelected,
+                    ]}
+                    onPress={() => setSelectedColorIndex(i)}
+                  >
+                    {selectedColorIndex === i && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Player list */}
               <Text style={styles.playerListTitle}>Players to import:</Text>
               {importedPlayers.slice(0, 15).map((p, i) => (
                 <View key={i} style={styles.playerRow}>
@@ -236,9 +294,14 @@ export default function ImportRosterScreen() {
 
               <TouchableOpacity style={styles.confirmBtn} onPress={confirmImport}>
                 <Text style={styles.confirmBtnText}>
-                  ✓ Use {importedPlayers.length} Players
+                  ✓ Import {importedPlayers.length} Players
                 </Text>
               </TouchableOpacity>
+
+              {/* Auto-fill hint */}
+              <Text style={styles.autoFillHint}>
+                Missing stats, positions, and appearances will be auto-filled with realistic values.
+              </Text>
             </>
           )}
 
@@ -290,6 +353,13 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 18,
     marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#555',
+    marginBottom: 6,
+    marginTop: 8,
   },
   input: {
     backgroundColor: '#f7f9fc',
@@ -361,6 +431,29 @@ const styles = StyleSheet.create({
     color: '#1a472a',
     marginBottom: 12,
   },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  colorSwatch: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  colorSwatchSelected: {
+    borderColor: '#c5a028',
+  },
+  checkmark: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   playerListTitle: {
     fontSize: 13,
     fontWeight: '600',
@@ -414,6 +507,13 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  autoFillHint: {
+    fontSize: 11,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
   },
   errorsList: {
     marginTop: 12,

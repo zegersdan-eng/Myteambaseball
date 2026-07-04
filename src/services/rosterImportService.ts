@@ -205,3 +205,85 @@ export function generateSampleCSV(): string {
 
   return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 }
+
+// ============================================================
+// Smart auto-fill helpers for incomplete imports
+// ============================================================
+
+const POSITION_DISTRIBUTION: string[] = [
+  'P', 'P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH', 'UTIL',
+];
+
+/** Auto-assign a sensible position based on player index and roster size */
+export function autoAssignPosition(index: number, totalPlayers: number): string {
+  // For small rosters (<12), spread out positions logically
+  const basePositions = ['P', 'C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'P', 'DH', 'UTIL'];
+  const pos = basePositions[index % basePositions.length];
+  if (pos === 'OF') {
+    const ofPositions = ['LF', 'CF', 'RF'];
+    return ofPositions[Math.floor(index / basePositions.length) % ofPositions.length];
+  }
+  return pos;
+}
+
+/** Generate realistic youth baseball stats */
+export function generateRandomStats(): { battingAvg: number; era: number; obp: number } {
+  // Batting average: .200-.450, with slight bias toward .250-.350
+  const battingAvg = parseFloat((0.200 + Math.random() * 0.250).toFixed(3));
+
+  // ERA: only for pitchers (determined elsewhere), 1.00-5.00
+  const era = parseFloat((1.00 + Math.random() * 4.00).toFixed(2));
+
+  // OBP: typically .050-.120 higher than AVG
+  const obpGap = 0.050 + Math.random() * 0.120;
+  const obp = parseFloat(Math.min(battingAvg + obpGap, 0.600).toFixed(3));
+
+  return { battingAvg, era, obp };
+}
+
+const SKIN_TONES = ['light', 'medium', 'tan', 'dark', 'deep'] as const;
+const HAIR_STYLES = ['short', 'buzz', 'curly', 'long', 'bald'] as const;
+
+/** Auto-assign random appearance for a player */
+export function autoAssignAppearance(): {
+  skinTone: string; hairStyle: string; glasses: boolean;
+  throwsHand: string; batsHand: string;
+} {
+  const roll = Math.random();
+  // 70% righty, 25% lefty, 5% switch
+  const throwsHand = roll < 0.70 ? 'right' : roll < 0.95 ? 'left' : 'right';
+  const batsHand = roll < 0.70 ? 'right' : roll < 0.95 ? 'left' : 'switch';
+
+  return {
+    skinTone: SKIN_TONES[Math.floor(Math.random() * SKIN_TONES.length)],
+    hairStyle: HAIR_STYLES[Math.floor(Math.random() * HAIR_STYLES.length)],
+    glasses: Math.random() < 0.15, // 15% wear glasses
+    throwsHand,
+    batsHand,
+  };
+}
+
+/** Default team colors for auto-assignment */
+export const TEAM_COLORS = [
+  { primary: '#1a472a', secondary: '#c5a028', name: 'Forest Green' },
+  { primary: '#1a365d', secondary: '#e2e8f0', name: 'Navy' },
+  { primary: '#9b2c2c', secondary: '#fcd34d', name: 'Cardinal Red' },
+  { primary: '#553c9a', secondary: '#e9d8fd', name: 'Purple' },
+  { primary: '#c05621', secondary: '#fefcbf', name: 'Orange' },
+  { primary: '#2c7a7b', secondary: '#e6fffa', name: 'Teal' },
+  { primary: '#374151', secondary: '#f59e0b', name: 'Charcoal' },
+  { primary: '#1A56DB', secondary: '#ffffff', name: 'Royal Blue' },
+];
+
+/** Auto-assign a team color based on team name hash */
+export function autoAssignTeamColor(teamName: string): { primary: string; secondary: string } {
+  let hash = 0;
+  for (let i = 0; i < teamName.length; i++) {
+    hash = ((hash << 5) - hash + teamName.charCodeAt(i)) | 0;
+  }
+  const index = Math.abs(hash) % TEAM_COLORS.length;
+  return {
+    primary: TEAM_COLORS[index].primary,
+    secondary: TEAM_COLORS[index].secondary,
+  };
+}
