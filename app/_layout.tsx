@@ -29,6 +29,7 @@ export default function RootLayout() {
         <Stack.Screen name="customize-jerseys" options={{ title: 'Customize Jerseys' }} />
         <Stack.Screen name="enter-code" options={{ title: 'Enter Unlock Code' }} />
         <Stack.Screen name="player-appearance" options={{ title: 'Customize Appearance' }} />
+        <Stack.Screen name="season" options={{ title: 'Season Mode' }} />
       </Stack>
     </TeamProvider>
   );
