@@ -8,11 +8,13 @@ import {
   Dimensions,
   Image,
   ImageBackground,
+  Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
 import { Assets } from '../src/assets';
+import { saveGameResult, GameResult } from '../src/services/gameHistoryService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -55,9 +57,33 @@ export default function GameScreen() {
   const [lastPitchResult, setLastPitchResult] = useState<PitchResult | null>(null);
   const [batterIndex, setBatterIndex] = useState(0);
   const [inningHistory, setInningHistory] = useState<string[]>([]);
+  const [showRecap, setShowRecap] = useState(false);
+  const [finalScores, setFinalScores] = useState({ home: 0, away: 0 });
 
   const ballPosY = useRef(new Animated.Value(0)).current;
   const swingAnim = useRef(new Animated.Value(0)).current;
+
+  /** End the game and save the result */
+  const endGame = useCallback(async () => {
+    const finalHome = gameState.homeScore;
+    const finalAway = gameState.awayScore;
+    setFinalScores({ home: finalHome, away: finalAway });
+    setShowRecap(true);
+
+    if (effectiveHomeTeam && effectiveAwayTeam) {
+      const result: GameResult = {
+        id: `game-${Date.now()}`,
+        timestamp: Date.now(),
+        teamId: effectiveHomeTeam.id,
+        opponentId: effectiveAwayTeam.id,
+        teamScore: finalHome,
+        opponentScore: finalAway,
+        won: finalHome > finalAway,
+        innings: gameState.inning,
+      };
+      await saveGameResult(result);
+    }
+  }, [gameState, effectiveHomeTeam, effectiveAwayTeam]);
 
   // Set pitcher/batter from current teams
   useEffect(() => {
@@ -285,9 +311,40 @@ export default function GameScreen() {
       </View>
 
       {/* Quit */}
-      <TouchableOpacity style={styles.quitBtn} onPress={() => router.back()}>
-        <Text style={styles.quitBtnText}>✕ Quit Game</Text>
+      <TouchableOpacity style={styles.quitBtn} onPress={endGame}>
+        <Text style={styles.quitBtnText}>✕ End Game</Text>
       </TouchableOpacity>
+
+      {/* Game Recap Modal */}
+      <Modal visible={showRecap} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Game Over!</Text>
+            <Text style={styles.modalVS}>
+              {homeName} vs {awayName}
+            </Text>
+            <Text style={styles.modalScore}>
+              {finalScores.home} - {finalScores.away}
+            </Text>
+            <Text style={styles.modalWinner}>
+              {finalScores.home > finalScores.away
+                ? `🏆 ${homeName} Wins!`
+                : finalScores.away > finalScores.home
+                ? `🏆 ${awayName} Wins!`
+                : '🤝 Tie Game!'}
+            </Text>
+            <Text style={styles.modalDetail}>
+              After {gameState.inning} inning{gameState.inning !== 1 ? 's' : ''}
+            </Text>
+            <Text style={styles.modalHistory}>
+              {inningHistory.slice(-10).join('  •  ')}
+            </Text>
+            <TouchableOpacity style={styles.modalBtn} onPress={() => router.back()}>
+              <Text style={styles.modalBtnText}>Back to Home</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -505,5 +562,67 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#ff9999',
     fontWeight: '600',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    width: '85%',
+    borderWidth: 2,
+    borderColor: '#c5a028',
+  },
+  modalTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#ffd700',
+    marginBottom: 8,
+  },
+  modalVS: {
+    fontSize: 14,
+    color: '#aaa',
+    marginBottom: 4,
+  },
+  modalScore: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginVertical: 8,
+  },
+  modalWinner: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#ffd700',
+    marginBottom: 8,
+  },
+  modalDetail: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 12,
+  },
+  modalHistory: {
+    fontSize: 12,
+    color: '#aaa',
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  modalBtn: {
+    backgroundColor: '#c5a028',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  modalBtnText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

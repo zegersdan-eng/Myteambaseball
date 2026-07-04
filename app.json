@@ -4,34 +4,29 @@
     "slug": "my-team-baseball",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/app-icon/app-icon.png",
+    "icon": "./assets/app-icon/app-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./src/assets/splash/splash-screen.png",
-      "backgroundColor": "#1A56DB",
-      "resizeMode": "cover"
+      "image": "./assets/splash/splash-screen.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#1A56DB"
     },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.myteambaseball.app",
-      "icon": "./src/assets/app-icon/app-icon.png",
-      "splash": {
-        "image": "./src/assets/splash/splash-screen.png",
-        "resizeMode": "cover",
-        "backgroundColor": "#1A56DB"
-      }
+      "icon": "./assets/app-icon/app-icon.png"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/app-icon/app-icon.png",
+        "foregroundImage": "./assets/app-icon/app-icon.png",
         "backgroundColor": "#1A56DB"
       },
       "package": "com.myteambaseball.app"
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./src/assets/app-icon/app-icon.png"
+      "favicon": "./assets/app-icon/app-icon.png"
     },
     "plugins": [
       "expo-router"

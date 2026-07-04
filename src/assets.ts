@@ -10,6 +10,20 @@ export const Assets = {
 
   field: require('../assets/field/baseball-field.png'),
 
+  jerseys: {
+    front: require('../assets/jerseys/jersey-template-front.png'),
+    back: require('../assets/jerseys/jersey-template-back.png'),
+    variants: {
+      forestGreen: require('../assets/jerseys/variants/forest-green.png'),
+      navy: require('../assets/jerseys/variants/navy.png'),
+      red: require('../assets/jerseys/variants/red.png'),
+      purple: require('../assets/jerseys/variants/purple.png'),
+      orange: require('../assets/jerseys/variants/orange.png'),
+      teal: require('../assets/jerseys/variants/teal.png'),
+      charcoal: require('../assets/jerseys/variants/charcoal.png'),
+    },
+  },
+
   ui: {
     playButton: require('../assets/ui/play-button.png'),
     scoreboard: require('../assets/ui/scoreboard.png'),

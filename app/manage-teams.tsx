@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,41 @@ import {
 import { useRouter } from 'expo-router';
 import { useTeams } from '../src/context/TeamContext';
 import { Team } from '../src/data/models';
+import { getTeamRecord, getLastGames } from '../src/services/gameHistoryService';
+
+interface TeamWithRecord extends Team {
+  wins?: number;
+  losses?: number;
+  ties?: number;
+  lastGame?: string;
+}
 
 export default function ManageTeamsScreen() {
   const router = useRouter();
   const { allTeams, activeTeam, setActiveTeam, removeTeam, isLoading } = useTeams();
+  const [teamsWithRecords, setTeamsWithRecords] = useState<TeamWithRecord[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Load W-L records for all teams
+  useEffect(() => {
+    (async () => {
+      const enriched: TeamWithRecord[] = [];
+      for (const team of allTeams) {
+        const record = await getTeamRecord(team.id);
+        const lastGames = await getLastGames(team.id, 1);
+        enriched.push({
+          ...team,
+          wins: record.wins,
+          losses: record.losses,
+          ties: record.ties,
+          lastGame: lastGames.length > 0
+            ? lastGames[0].won ? 'W' : 'L'
+            : undefined,
+        });
+      }
+      setTeamsWithRecords(enriched);
+    })();
+  }, [allTeams]);
 
   const handleSetActive = async (team: Team) => {
     await setActiveTeam(team);
@@ -26,8 +56,9 @@ export default function ManageTeamsScreen() {
     removeTeam(teamId).finally(() => setDeletingId(null));
   };
 
-  const renderTeam = ({ item }: { item: Team }) => {
+  const renderTeam = ({ item }: { item: TeamWithRecord }) => {
     const isActive = activeTeam?.id === item.id;
+    const total = (item.wins || 0) + (item.losses || 0);
     return (
       <TouchableOpacity
         style={[styles.teamCard, isActive && styles.activeCard]}
@@ -42,6 +73,12 @@ export default function ManageTeamsScreen() {
         <View style={styles.teamInfo}>
           <Text style={styles.teamName}>{item.name}</Text>
           <Text style={styles.teamPlayers}>{item.players.length} players</Text>
+          {total > 0 && (
+            <Text style={styles.teamRecord}>
+              Record: {item.wins}-{item.losses}{item.ties && item.ties > 0 ? `-${item.ties}` : ''}
+              {item.lastGame && `  •  Last: ${item.lastGame}`}
+            </Text>
+          )}
           {isActive && <Text style={styles.activeBadge}>⭐ MY TEAM</Text>}
         </View>
         {!isActive && (
@@ -72,7 +109,7 @@ export default function ManageTeamsScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={allTeams}
+        data={teamsWithRecords}
         keyExtractor={(item) => item.id}
         renderItem={renderTeam}
         contentContainerStyle={styles.list}
@@ -171,6 +208,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#c5a028',
     marginTop: 4,
+  },
+  teamRecord: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 3,
   },
   deleteBtn: {
     width: 32,
