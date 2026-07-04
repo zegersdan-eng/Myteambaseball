@@ -9,7 +9,8 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { useTeams } from '../src/context/TeamContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -73,25 +74,17 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Jersey Upload */}
+      {/* Custom Jerseys */}
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Custom Jerseys</Text>
+        <Text style={styles.sectionTitle}>👕 Custom Jerseys</Text>
         <Text style={styles.description}>
-          Upload a photo of your team's jersey to see it in the game!
+          Customize your team's jerseys with colors, a team photo, and player numbers.
         </Text>
-        <TouchableOpacity style={styles.uploadBtn}>
-          <Text style={styles.uploadBtnText}>📷  Upload Jersey Photo</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Team Photo */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Team Photo</Text>
-        <Text style={styles.description}>
-          Add your team photo to see the whole squad together.
-        </Text>
-        <TouchableOpacity style={styles.uploadBtn}>
-          <Text style={styles.uploadBtnText}>📸  Upload Team Photo</Text>
+        <TouchableOpacity
+          style={styles.uploadBtn}
+          onPress={() => router.push('/customize-jerseys')}
+        >
+          <Text style={styles.uploadBtnText}>🎨 Customize Jerseys</Text>
         </TouchableOpacity>
       </View>
 

@@ -26,6 +26,7 @@ export default function RootLayout() {
         <Stack.Screen name="manage-teams" options={{ title: 'My Teams' }} />
         <Stack.Screen name="select-opponent" options={{ title: 'Select Opponent' }} />
         <Stack.Screen name="lineup" options={{ title: 'Batting Order' }} />
+        <Stack.Screen name="customize-jerseys" options={{ title: 'Customize Jerseys' }} />
       </Stack>
     </TeamProvider>
   );

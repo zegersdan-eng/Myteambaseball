@@ -1,14 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import PlayerCard from '../src/components/PlayerCard';
 import { Player } from '../src/data/models';
 import { useTeams } from '../src/context/TeamContext';
+import { loadCustomization } from '../src/services/jerseyCustomizationService';
 
 export default function RosterScreen() {
   const router = useRouter();
   const { activeTeam } = useTeams();
+  const [customJersey, setCustomJersey] = useState(false);
   const team = activeTeam;
+
+  useEffect(() => {
+    if (team?.id) {
+      loadCustomization(team.id).then((c) => {
+        if (c.primaryColor !== '#1A56DB' || c.players.length > 0) {
+          setCustomJersey(true);
+        }
+      });
+    }
+  }, [team?.id]);
 
   const renderPlayer = ({ item }: { item: Player }) => (
     <TouchableOpacity
@@ -26,13 +38,21 @@ export default function RosterScreen() {
     <View>
       <View style={[styles.teamBanner, { backgroundColor: team?.primaryColor || '#1a472a' }]}>
         <Text style={styles.teamBannerName}>{team?.name || 'No Team'}</Text>
-        <Text style={styles.teamBannerRecord}>{team?.players.length || 0} players</Text>
+        <Text style={styles.teamBannerRecord}>
+          {team?.players.length || 0} players {customJersey ? '👕 Custom' : ''}
+        </Text>
       </View>
       <TouchableOpacity
         style={styles.lineupBtn}
         onPress={() => router.push('/lineup')}
       >
         <Text style={styles.lineupBtnText}>🔢  Set Batting Order</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.customizeBtn}
+        onPress={() => router.push('/customize-jerseys')}
+      >
+        <Text style={styles.customizeBtnText}>🎨  Customize Jerseys</Text>
       </TouchableOpacity>
     </View>
   );
@@ -106,6 +126,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#1a472a',
+  },
+  customizeBtn: {
+    backgroundColor: '#ffffff',
+    marginHorizontal: 16,
+    marginVertical: 4,
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  customizeBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1A56DB',
   },
   emptyState: {
     flex: 1,
