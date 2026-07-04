@@ -122,3 +122,48 @@ export function getAllPremiumFeatures(): Feature[] {
 export function isFreeAtLaunch(): boolean {
   return FREE_AT_LAUNCH;
 }
+
+// ============================================================
+// Hash code generator utility
+// Ready for when you flip the switch. Generates a simple
+// one-way validation code from team name and season.
+// ============================================================
+
+/** Generate a simple hash-based code from a team name and season */
+export function generateTeamCode(teamName: string, season: string): string {
+  const sanitized = teamName.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const prefix = sanitized.slice(0, 4);
+  const seasonShort = season.slice(-2);
+  // Simple hash: sum of char codes mod 10000
+  let hash = 0;
+  for (let i = 0; i < teamName.length; i++) {
+    hash = ((hash << 5) - hash + teamName.charCodeAt(i)) | 0;
+  }
+  const code = Math.abs(hash % 10000).toString().padStart(4, '0');
+  return `MTB-${prefix}-${seasonShort}-${code}`;
+}
+
+/** Validate a user-entered code against the expected format and hash */
+export function validateCode(code: string): { valid: boolean; message: string } {
+  const upper = code.toUpperCase().trim();
+
+  // Check basic format: MTB-XXXX-XX-XXXX
+  if (!/^MTB-[A-Z0-9]+-\d{2,4}-\d{4}$/.test(upper)) {
+    return { valid: false, message: 'Code format is invalid. Use format: MTB-TEAM-YY-XXXX' };
+  }
+
+  // Check against built-in codes
+  const builtIn = GENERATED_CODES.find((c) => c.code === upper);
+  if (builtIn) {
+    if (builtIn.expiresAt && Date.now() > builtIn.expiresAt) {
+      return { valid: false, message: 'This code has expired.' };
+    }
+    if (builtIn.usedCount >= builtIn.maxUses) {
+      return { valid: false, message: 'This code has reached its maximum number of uses.' };
+    }
+    return { valid: true, message: `Code is valid! Unlocks: ${builtIn.features.join(', ')}` };
+  }
+
+  // If no match, the code is unknown
+  return { valid: false, message: 'Unknown code. Please check and try again.' };
+}

@@ -160,9 +160,17 @@ export default function SettingsScreen() {
           {isUnlocked ? '🌟 Premium Active' : '🌟 Unlock Premium'}
         </Text>
         {isUnlocked ? (
-          <Text style={styles.premiumDesc}>
-            All premium features are available! {isFreeAtLaunch() ? 'Enjoy the free launch — everything is unlocked.' : 'Your activation is active.'}
-          </Text>
+          <>
+            <Text style={styles.premiumDesc}>
+              All premium features are available! {isFreeAtLaunch() ? 'Enjoy the free launch — everything is unlocked.' : 'Your activation is active.'}
+            </Text>
+            <TouchableOpacity
+              style={styles.codeEntryBtn}
+              onPress={() => router.push('/enter-code')}
+            >
+              <Text style={styles.codeEntryBtnText}>🔑 Enter Unlock Code</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <>
             <Text style={styles.premiumDesc}>
@@ -289,6 +297,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  codeEntryBtn: {
+    backgroundColor: '#f0f4f8',
+    borderRadius: 10,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e4ea',
+    marginTop: 4,
+  },
+  codeEntryBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A56DB',
   },
   uploadBtn: {
     backgroundColor: '#f0f4f8',
