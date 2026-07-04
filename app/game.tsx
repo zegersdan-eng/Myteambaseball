@@ -15,19 +15,11 @@ import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
 import { Assets } from '../src/assets';
 import { saveGameResult, GameResult } from '../src/services/gameHistoryService';
-import { loadLineup, getBattingOrder } from '../src/services/lineupService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const MAX_INNINGS = 6;
 
 type PitchResult = 'ball' | 'strike' | 'foul' | 'hit' | 'homeRun';
-
-/** Sprite key for different player positions */
-function getSpriteKey(position: string): keyof typeof Assets.sprites {
-  if (position === 'P') return 'pitcher';
-  if (['1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF'].includes(position)) return 'fielder';
-  if (['C'].includes(position)) return 'fielder';
-  return 'batter';
-}
 
 export default function GameScreen() {
   const router = useRouter();
@@ -60,16 +52,20 @@ export default function GameScreen() {
   const [inningHistory, setInningHistory] = useState<string[]>([]);
   const [showRecap, setShowRecap] = useState(false);
   const [finalScores, setFinalScores] = useState({ home: 0, away: 0 });
-  const [homeLineup, setHomeLineup] = useState<string[]>([]);
-  const [awayLineup, setAwayLineup] = useState<string[]>([]);
 
   const ballPosY = useRef(new Animated.Value(0)).current;
   const swingAnim = useRef(new Animated.Value(0)).current;
 
-  /** End the game and save the result */
-  const endGame = useCallback(async () => {
-    const finalHome = gameState.homeScore;
-    const finalAway = gameState.awayScore;
+  // Track if we've already triggered recap for this game-over state
+  const recapTriggeredRef = useRef(false);
+
+  /** Save game result and show recap */
+  const triggerEndGame = useCallback(async (state: GameState) => {
+    if (recapTriggeredRef.current) return;
+    recapTriggeredRef.current = true;
+
+    const finalHome = state.homeScore;
+    const finalAway = state.awayScore;
     setFinalScores({ home: finalHome, away: finalAway });
     setShowRecap(true);
 
@@ -82,42 +78,32 @@ export default function GameScreen() {
         teamScore: finalHome,
         opponentScore: finalAway,
         won: finalHome > finalAway,
-        innings: gameState.inning,
+        innings: state.inning,
       };
       await saveGameResult(result);
     }
-  }, [gameState, effectiveHomeTeam, effectiveAwayTeam]);
+  }, [effectiveHomeTeam, effectiveAwayTeam]);
 
-  // Load lineups for both teams
+  /** Auto-trigger recap when game ends */
   useEffect(() => {
-    (async () => {
-      if (effectiveHomeTeam) {
-        const saved = await loadLineup(effectiveHomeTeam.id);
-        setHomeLineup(
-          getBattingOrder(saved, effectiveHomeTeam.players.map((p) => p.id))
-        );
-      }
-      if (effectiveAwayTeam) {
-        const saved = await loadLineup(effectiveAwayTeam.id);
-        setAwayLineup(
-          getBattingOrder(saved, effectiveAwayTeam.players.map((p) => p.id))
-        );
-      }
-    })();
-  }, [effectiveHomeTeam?.id, effectiveAwayTeam?.id]);
+    if (gameState.isGameOver) {
+      triggerEndGame(gameState);
+    }
+  }, [gameState.isGameOver, gameState, triggerEndGame]);
 
-  // Set pitcher/batter from current teams
+  /** Forfeit button handler */
+  const handleForfeit = useCallback(() => {
+    setGameState((prev) => ({ ...prev, isGameOver: true }));
+  }, []);
+
+  /** Set pitcher/batter from current teams */
   useEffect(() => {
-    if (effectiveHomeTeam && effectiveAwayTeam) {
+    if (effectiveHomeTeam && effectiveAwayTeam && !gameState.isGameOver) {
       const battingTeam = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
       const pitchingTeam = gameState.isTop ? effectiveHomeTeam : effectiveAwayTeam;
       const pitcher = pitchingTeam.players.find((p) => p.position === 'P') || pitchingTeam.players[0];
 
-      // Use lineup order for batter selection
-      const lineupIds = gameState.isTop ? awayLineup : homeLineup;
-      const effectiveLineup = lineupIds.length > 0 ? lineupIds : battingTeam.players.map((p) => p.id);
-      const batterId = effectiveLineup[batterIndex % effectiveLineup.length];
-      const batter = battingTeam.players.find((p) => p.id === batterId) || battingTeam.players[batterIndex % battingTeam.players.length];
+      const batter = battingTeam.players[batterIndex % battingTeam.players.length];
 
       setGameState((prev) => ({
         ...prev,
@@ -125,7 +111,7 @@ export default function GameScreen() {
         currentBatter: batter,
       }));
     }
-  }, [effectiveHomeTeam, effectiveAwayTeam, gameState.isTop, batterIndex]);
+  }, [effectiveHomeTeam, effectiveAwayTeam, gameState.isTop, batterIndex, gameState.isGameOver]);
 
   /** Determine pitch outcome based on batter/pitcher stats */
   const simulatePitch = useCallback((): PitchResult => {
@@ -143,6 +129,50 @@ export default function GameScreen() {
     if (roll < 0.65 + pitchSpeed * 0.2) return 'strike';
     return 'ball';
   }, [gameState]);
+
+  /** Handle an out — increment outs, flip inning at 3 outs, check game-over */
+  const handleOut = useCallback((prev: GameState): GameState => {
+    const newOuts = prev.outs + 1;
+    if (newOuts >= 3) {
+      const wasTop = prev.isTop;
+      const nextInning = wasTop ? prev.inning : prev.inning + 1;
+
+      // GAME OVER: Home team leads after top of 6th (or later) → skip bottom half
+      if (wasTop && prev.inning >= MAX_INNINGS && prev.homeScore > prev.awayScore) {
+        return {
+          ...prev,
+          outs: 0,
+          balls: 0,
+          strikes: 0,
+          isGameOver: true,
+        };
+      }
+
+      // GAME OVER: Completed bottom of 6th (or later) and not tied
+      if (!wasTop && nextInning > MAX_INNINGS && prev.homeScore !== prev.awayScore) {
+        return {
+          ...prev,
+          outs: 0,
+          balls: 0,
+          strikes: 0,
+          isGameOver: true,
+        };
+      }
+
+      // Tied after MAX_INNINGS → extra innings (continue playing)
+      // Normal inning flip
+      return {
+        ...prev,
+        outs: 0,
+        balls: 0,
+        strikes: 0,
+        isTop: !wasTop,
+        inning: nextInning,
+        currentBatter: null,
+      };
+    }
+    return { ...prev, outs: newOuts, balls: 0, strikes: 0 };
+  }, []);
 
   /** Handle a swing */
   const handleSwing = useCallback(() => {
@@ -183,7 +213,15 @@ export default function GameScreen() {
         break;
       case 'hit':
         resultText = 'Hit! 🏃';
-        setGameState((prev) => ({ ...prev, balls: 0, strikes: 0 }));
+        setGameState((prev) => ({
+          ...prev,
+          balls: 0,
+          strikes: 0,
+          ...(prev.isTop
+            ? { awayScore: prev.awayScore + 1 }
+            : { homeScore: prev.homeScore + 1 }
+          ),
+        }));
         break;
       case 'homeRun':
         resultText = 'HOME RUN! ⚾✨';
@@ -191,7 +229,10 @@ export default function GameScreen() {
           ...prev,
           balls: 0,
           strikes: 0,
-          homeScore: prev.homeScore + 1,
+          ...(prev.isTop
+            ? { awayScore: prev.awayScore + 2 }
+            : { homeScore: prev.homeScore + 2 }
+          ),
         }));
         break;
     }
@@ -200,39 +241,25 @@ export default function GameScreen() {
     setInningHistory((prev) => [...prev, resultText]);
     ballPosY.setValue(0);
     swingAnim.setValue(0);
-  }, [gameState, simulatePitch, swingAnim, ballPosY]);
-
-  /** Handle an out */
-  const handleOut = (prev: GameState): GameState => {
-    const newOuts = prev.outs + 1;
-    if (newOuts >= 3) {
-      return {
-        ...prev,
-        outs: 0,
-        balls: 0,
-        strikes: 0,
-        isTop: !prev.isTop,
-        inning: prev.isTop ? prev.inning : prev.inning + 1,
-        currentBatter: null,
-      };
-    }
-    return { ...prev, outs: newOuts, balls: 0, strikes: 0 };
-  };
+  }, [gameState, simulatePitch, swingAnim, ballPosY, handleOut]);
 
   /** Advance to next batter */
   const nextBatter = useCallback(() => {
     const team = gameState.isTop ? effectiveAwayTeam : effectiveHomeTeam;
     if (!team) return;
-    const lineup = gameState.isTop ? awayLineup : homeLineup;
-    const lineupLength = lineup.length > 0 ? lineup.length : team.players.length;
-    const nextIndex = (batterIndex + 1) % lineupLength;
+    const nextIndex = (batterIndex + 1) % team.players.length;
     setBatterIndex(nextIndex);
     setCurrentResult(null);
     setLastPitchResult(null);
-  }, [batterIndex, gameState.isTop, effectiveHomeTeam, effectiveAwayTeam, homeLineup, awayLineup]);
+  }, [batterIndex, gameState.isTop, effectiveHomeTeam, effectiveAwayTeam]);
 
   const homeName = effectiveHomeTeam?.name ?? 'HOME';
   const awayName = effectiveAwayTeam?.name ?? 'AWAY';
+
+  // Build half-inning label with extra innings indicator
+  const inningLabel = gameState.inning > MAX_INNINGS
+    ? `${gameState.isTop ? '▲' : '▼'} EXTRA ${gameState.inning - MAX_INNINGS}`
+    : `${gameState.isTop ? '▲' : '▼'} INNING ${gameState.inning}`;
 
   return (
     <View style={styles.container}>
@@ -245,9 +272,7 @@ export default function GameScreen() {
             <Text style={styles.scoreValue}>{gameState.awayScore}</Text>
           </View>
           <View style={styles.scoreInning}>
-            <Text style={styles.inningLabel}>
-              {gameState.isTop ? '▲' : '▼'} INNING {gameState.inning}
-            </Text>
+            <Text style={styles.inningLabel}>{inningLabel}</Text>
             <View style={styles.countContainer}>
               <Text style={styles.countText}>
                 {gameState.balls} - {gameState.strikes} - {gameState.outs}
@@ -338,12 +363,12 @@ export default function GameScreen() {
         </Text>
       </View>
 
-      {/* Quit */}
-      <TouchableOpacity style={styles.quitBtn} onPress={endGame}>
-        <Text style={styles.quitBtnText}>✕ End Game</Text>
+      {/* Forfeit button (small, discreet) */}
+      <TouchableOpacity style={styles.forfeitBtn} onPress={handleForfeit}>
+        <Text style={styles.forfeitBtnText}>Forfeit Game</Text>
       </TouchableOpacity>
 
-      {/* Game Recap Modal */}
+      {/* Game Recap Modal — auto-triggered when game ends */}
       <Modal visible={showRecap} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -354,6 +379,9 @@ export default function GameScreen() {
             <Text style={styles.modalScore}>
               {finalScores.home} - {finalScores.away}
             </Text>
+            <Text style={styles.modalWarning}>
+              {gameState.inning > MAX_INNINGS ? 'Extra Innings' : ''}
+            </Text>
             <Text style={styles.modalWinner}>
               {finalScores.home > finalScores.away
                 ? `🏆 ${homeName} Wins!`
@@ -363,6 +391,7 @@ export default function GameScreen() {
             </Text>
             <Text style={styles.modalDetail}>
               After {gameState.inning} inning{gameState.inning !== 1 ? 's' : ''}
+              {gameState.inning > MAX_INNINGS ? ' (extra innings)' : ''}
             </Text>
             <Text style={styles.modalHistory}>
               {inningHistory.slice(-10).join('  •  ')}
@@ -423,10 +452,11 @@ const styles = StyleSheet.create({
     flex: 1.5,
   },
   inningLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#F59E0B',
     marginBottom: 4,
+    textAlign: 'center',
   },
   countContainer: {
     alignItems: 'center',
@@ -580,16 +610,20 @@ const styles = StyleSheet.create({
     color: '#c5d9c8',
     marginTop: 2,
   },
-  quitBtn: {
+  forfeitBtn: {
     alignSelf: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    marginBottom: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,50,50,0.15)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,100,100,0.3)',
   },
-  quitBtnText: {
-    fontSize: 13,
-    color: '#ff9999',
-    fontWeight: '600',
+  forfeitBtnText: {
+    fontSize: 12,
+    color: '#ff7777',
+    fontWeight: '500',
   },
   // Modal styles
   modalOverlay: {
@@ -623,6 +657,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#ffffff',
     marginVertical: 8,
+  },
+  modalWarning: {
+    fontSize: 13,
+    color: '#F59E0B',
+    fontWeight: '600',
+    marginBottom: 4,
+    minHeight: 20,
   },
   modalWinner: {
     fontSize: 20,
