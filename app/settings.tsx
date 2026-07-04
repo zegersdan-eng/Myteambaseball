@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTeams } from '../src/context/TeamContext';
+import { isFreeAtLaunch, isFeatureUnlocked, redeemCode } from '../src/services/unlockManager';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -18,6 +19,29 @@ export default function SettingsScreen() {
   const [primaryColor, setPrimaryColor] = useState('#1a472a');
   const [autoFielding, setAutoFielding] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [activationCode, setActivationCode] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(true);
+
+  React.useEffect(() => {
+    (async () => {
+      const unlocked = await isFeatureUnlocked('premium');
+      setIsUnlocked(unlocked);
+    })();
+  }, []);
+
+  const handleRedeemCode = async () => {
+    if (!activationCode.trim()) {
+      Alert.alert('Enter a code', 'Please enter an activation code.');
+      return;
+    }
+    const result = await redeemCode(activationCode);
+    Alert.alert(result.success ? '✅ Success!' : '❌ Failed', result.message, [
+      { text: 'OK', onPress: () => {
+        if (result.success) setIsUnlocked(true);
+        setActivationCode('');
+      }},
+    ]);
+  };
 
   const colorOptions = [
     { name: 'Forest Green', hex: '#1a472a' },
@@ -130,15 +154,37 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Premium */}
+      {/* Premium / Unlock */}
       <View style={[styles.premiumCard, { borderColor: '#c5a028' }]}>
-        <Text style={styles.premiumTitle}>🌟 Premium</Text>
-        <Text style={styles.premiumDesc}>
-          Import real rosters & stats from GameChanger. Unlock custom jerseys, team photos, and stat tracking!
+        <Text style={styles.premiumTitle}>
+          {isUnlocked ? '🌟 Premium Active' : '🌟 Unlock Premium'}
         </Text>
-        <TouchableOpacity style={styles.premiumBtn}>
-          <Text style={styles.premiumBtnText}>Upgrade — $3.99/mo</Text>
-        </TouchableOpacity>
+        {isUnlocked ? (
+          <Text style={styles.premiumDesc}>
+            All premium features are available! {isFreeAtLaunch() ? 'Enjoy the free launch — everything is unlocked.' : 'Your activation is active.'}
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.premiumDesc}>
+              Import real rosters & stats from GameChanger. Unlock custom jerseys, team photos, and stat tracking!
+            </Text>
+            <View style={styles.codeRow}>
+              <TextInput
+                style={styles.codeInput}
+                value={activationCode}
+                onChangeText={setActivationCode}
+                placeholder="Enter code"
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity style={styles.redeemBtn} onPress={handleRedeemCode}>
+                <Text style={styles.redeemBtnText}>Redeem</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={styles.premiumBtn}>
+              <Text style={styles.premiumBtnText}>Upgrade — $3.99/mo</Text>
+            </TouchableOpacity>
+          </>
+        )}
       </View>
     </ScrollView>
   );
@@ -214,6 +260,35 @@ const styles = StyleSheet.create({
     color: '#888',
     marginBottom: 12,
     lineHeight: 18,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  codeInput: {
+    flex: 1,
+    backgroundColor: '#f7f9fc',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    borderWidth: 1,
+    borderColor: '#e0e4ea',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+  },
+  redeemBtn: {
+    backgroundColor: '#1A56DB',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  redeemBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   uploadBtn: {
     backgroundColor: '#f0f4f8',
