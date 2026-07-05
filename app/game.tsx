@@ -15,6 +15,7 @@ import { useTeams } from '../src/context/TeamContext';
 import { GameState, Player, Team } from '../src/data/models';
 import { Assets } from '../src/assets';
 import { saveGameResult, GameResult } from '../src/services/gameHistoryService';
+import { recordAtBat, recordPitch } from '../src/services/playerStatsService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MAX_INNINGS = 6;
@@ -185,6 +186,8 @@ export default function GameScreen() {
 
     const result = simulatePitch();
     setLastPitchResult(result);
+    const batter = gameState.currentBatter;
+    const pitcher = gameState.currentPitcher;
 
     let resultText = '';
     switch (result) {
@@ -192,7 +195,12 @@ export default function GameScreen() {
         resultText = 'Ball!';
         setGameState((prev) => {
           const newBalls = prev.balls + 1;
-          if (newBalls >= 4) return { ...prev, balls: 0, strikes: 0 };
+          if (newBalls >= 4) {
+            // Walk — record stat
+            if (batter) recordAtBat({ playerId: batter.id, result: 'walk', rbi: 0, isHomeTeam: !prev.isTop, gameId: '' });
+            if (pitcher) recordPitch({ playerId: pitcher.id, result: 'walk', earnedRun: false, isHomeTeam: prev.isTop, gameId: '' });
+            return { ...prev, balls: 0, strikes: 0 };
+          }
           return { ...prev, balls: newBalls };
         });
         break;
@@ -200,7 +208,12 @@ export default function GameScreen() {
         resultText = 'Strike!';
         setGameState((prev) => {
           const newStrikes = prev.strikes + 1;
-          if (newStrikes >= 3) return handleOut(prev);
+          if (newStrikes >= 3) {
+            // Strikeout — record stat
+            if (batter) recordAtBat({ playerId: batter.id, result: 'strikeout', rbi: 0, isHomeTeam: !prev.isTop, gameId: '' });
+            if (pitcher) recordPitch({ playerId: pitcher.id, result: 'strikeout', earnedRun: false, isHomeTeam: prev.isTop, gameId: '' });
+            return handleOut(prev);
+          }
           return { ...prev, strikes: newStrikes };
         });
         break;
@@ -213,27 +226,35 @@ export default function GameScreen() {
         break;
       case 'hit':
         resultText = 'Hit! 🏃';
-        setGameState((prev) => ({
-          ...prev,
-          balls: 0,
-          strikes: 0,
-          ...(prev.isTop
-            ? { awayScore: prev.awayScore + 1 }
-            : { homeScore: prev.homeScore + 1 }
-          ),
-        }));
+        setGameState((prev) => {
+          if (batter) recordAtBat({ playerId: batter.id, result: 'single', rbi: 1, isHomeTeam: !prev.isTop, gameId: '' });
+          if (pitcher) recordPitch({ playerId: pitcher.id, result: 'hit', earnedRun: true, isHomeTeam: prev.isTop, gameId: '' });
+          return {
+            ...prev,
+            balls: 0,
+            strikes: 0,
+            ...(prev.isTop
+              ? { awayScore: prev.awayScore + 1 }
+              : { homeScore: prev.homeScore + 1 }
+            ),
+          };
+        });
         break;
       case 'homeRun':
         resultText = 'HOME RUN! ⚾✨';
-        setGameState((prev) => ({
-          ...prev,
-          balls: 0,
-          strikes: 0,
-          ...(prev.isTop
-            ? { awayScore: prev.awayScore + 2 }
-            : { homeScore: prev.homeScore + 2 }
-          ),
-        }));
+        setGameState((prev) => {
+          if (batter) recordAtBat({ playerId: batter.id, result: 'homeRun', rbi: 2, isHomeTeam: !prev.isTop, gameId: '' });
+          if (pitcher) recordPitch({ playerId: pitcher.id, result: 'homeRun', earnedRun: true, isHomeTeam: prev.isTop, gameId: '' });
+          return {
+            ...prev,
+            balls: 0,
+            strikes: 0,
+            ...(prev.isTop
+              ? { awayScore: prev.awayScore + 2 }
+              : { homeScore: prev.homeScore + 2 }
+            ),
+          };
+        });
         break;
     }
 

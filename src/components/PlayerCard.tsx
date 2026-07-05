@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Player } from '../data/models';
 import { Assets } from '../assets';
+import { getPlayerStats, PlayerStats, formatAvg, formatSlg, formatEra } from '../services/playerStatsService';
 
 interface PlayerCardProps {
   player: Player;
@@ -11,6 +12,13 @@ interface PlayerCardProps {
 
 export default function PlayerCard({ player, teamColor = '#1A56DB', onPress }: PlayerCardProps) {
   const displayNumber = player.number > 0 ? player.number : '—';
+  const [stats, setStats] = useState<PlayerStats | null>(null);
+
+  useEffect(() => {
+    getPlayerStats(player.id).then(setStats);
+  }, [player.id]);
+
+  const b = stats?.batting;
 
   return (
     <View style={styles.card}>
@@ -28,22 +36,41 @@ export default function PlayerCard({ player, teamColor = '#1A56DB', onPress }: P
 
       {/* Stats */}
       <View style={styles.stats}>
-        {player.battingAvg > 0 && (
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{player.battingAvg.toFixed(3).slice(1)}</Text>
-            <Text style={styles.statLabel}>AVG</Text>
-          </View>
+        {b && b.ab > 0 ? (
+          <>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{formatAvg(b.avg)}</Text>
+              <Text style={styles.statLabel}>AVG</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{b.homeRuns}</Text>
+              <Text style={styles.statLabel}>HR</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{b.rbi}</Text>
+              <Text style={styles.statLabel}>RBI</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            {player.battingAvg > 0 && (
+              <View style={styles.stat}>
+                <Text style={styles.statValue}>{player.battingAvg.toFixed(3).slice(1)}</Text>
+                <Text style={styles.statLabel}>AVG</Text>
+              </View>
+            )}
+            {player.ERA > 0 && (
+              <View style={styles.stat}>
+                <Text style={styles.statValue}>{player.ERA.toFixed(2)}</Text>
+                <Text style={styles.statLabel}>ERA</Text>
+              </View>
+            )}
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{player.OBP.toFixed(3).slice(1)}</Text>
+              <Text style={styles.statLabel}>OBP</Text>
+            </View>
+          </>
         )}
-        {player.ERA > 0 && (
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{player.ERA.toFixed(2)}</Text>
-            <Text style={styles.statLabel}>ERA</Text>
-          </View>
-        )}
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>{player.OBP.toFixed(3).slice(1)}</Text>
-          <Text style={styles.statLabel}>OBP</Text>
-        </View>
       </View>
     </View>
   );
