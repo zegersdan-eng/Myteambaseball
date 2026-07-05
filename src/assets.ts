@@ -1,15 +1,18 @@
 export const Assets = {
   logo: require('../assets/logo/mtb-logo.png'),
-
   sprites: {
     batter: require('../assets/sprites/batter.png'),
     pitcher: require('../assets/sprites/pitcher.png'),
     fielder: require('../assets/sprites/fielder.png'),
     baseRunner: require('../assets/sprites/base-runner.png'),
   },
-
   field: require('../assets/field/baseball-field.png'),
-
+  fields: {
+    default: require('../assets/field/baseball-field.png'),
+    sunset: require('../assets/field/field-sunset.png'),
+    night: require('../assets/field/field-night.png'),
+    cloudy: require('../assets/field/field-cloudy.png'),
+  },
   jerseys: {
     front: require('../assets/jerseys/jersey-template-front.png'),
     back: require('../assets/jerseys/jersey-template-back.png'),
@@ -23,16 +26,27 @@ export const Assets = {
       charcoal: require('../assets/jerseys/variants/charcoal.png'),
     },
   },
-
   ui: {
     playButton: require('../assets/ui/play-button.png'),
     scoreboard: require('../assets/ui/scoreboard.png'),
     menuBackground: require('../assets/ui/menu-background.png'),
     statCard: require('../assets/ui/stat-card.png'),
+    statCardTemplate: require('../assets/ui/stat-card-template.png'),
     settingsButton: require('../assets/ui/settings-button.png'),
     baseballIcon: require('../assets/ui/baseball-icon.png'),
   },
-
+  badges: {
+    firstHr: require('../assets/ui/badges/badge-first-hr.png'),
+    hr10: require('../assets/ui/badges/badge-10-hr.png'),
+    cycle: require('../assets/ui/badges/badge-cycle.png'),
+    winStreak5: require('../assets/ui/badges/badge-5-win-streak.png'),
+    winStreak10: require('../assets/ui/badges/badge-10-win-streak.png'),
+    noHitter: require('../assets/ui/badges/badge-no-hitter.png'),
+    champion: require('../assets/ui/badges/badge-champion.png'),
+    perfectInning: require('../assets/ui/badges/badge-perfect-inning.png'),
+    walkoff: require('../assets/ui/badges/badge-walkoff.png'),
+    customizer: require('../assets/ui/badges/badge-customizer.png'),
+  },
   appIcon: require('../assets/app-icon/app-icon.png'),
   splash: require('../assets/splash/splash-screen.png'),
 } as const;
