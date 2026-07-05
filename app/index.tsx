@@ -106,6 +106,13 @@ export default function HomeScreen() {
           <Image source={Assets.ui.settingsButton} style={styles.secondaryIcon} resizeMode="contain" />
           <Text style={styles.secondaryBtnText}>Settings</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={() => router.push('/achievements')}
+        >
+          <Text style={{ fontSize: 20 }}>🏅</Text>
+          <Text style={styles.secondaryBtnText}>Achievements</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tip */}
