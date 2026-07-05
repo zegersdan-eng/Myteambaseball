@@ -29,7 +29,8 @@
       "favicon": "./assets/app-icon/app-icon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-asset"
     ],
     "scheme": "my-team-baseball"
   }

@@ -1,0 +1,105 @@
+ app.json                                           |  15 [32m+++++++[m[31m------[m
+ app/_layout.tsx                                    |  16 [32m++++++++++[m[31m----[m
+ app/customize-jerseys.tsx                          | 453 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ app/enter-code.tsx                                 | 164 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ app/game.tsx                                       | 515 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m-------------------------------------------------------------------------------------------------------------------------------[m
+ app/import-roster.tsx                              | 157 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m------------[m
+ app/index.tsx                                      | 287 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m---------------------------------------------------------------------------[m
+ app/lineup.tsx                                     | 350 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ app/manage-teams.tsx                               | 279 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ app/manual-roster.tsx                              |  36 [32m+++++++++++++++++++++++++++[m[31m----[m
+ app/player-appearance.tsx                          | 274 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ app/player/[id].tsx                                |  81 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m--------[m
+ app/roster.tsx                                     | 129 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m----------[m
+ app/select-opponent.tsx                            | 218 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ app/settings.tsx                                   | 139 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m--------------------[m
+ app/stadiums.tsx                                   |  86 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ assets/INTEGRATION_GUIDE.md                        | 371 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ assets/README.md                                   | 213 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ assets/app-icon/app-icon.png                       | Bin [31m0[m -> [32m1602042[m bytes
+ assets/field/baseball-field.png                    | Bin [31m0[m -> [32m2432403[m bytes
+ assets/jerseys/CUSTOMIZATION-SPEC.md               | 233 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ assets/jerseys/customization-preview.png           | Bin [31m0[m -> [32m2363499[m bytes
+ assets/jerseys/customization-screen-mockup.png     | Bin [31m0[m -> [32m2975878[m bytes
+ assets/jerseys/jersey-color-picker-ui.png          | Bin [31m0[m -> [32m2713920[m bytes
+ assets/jerseys/jersey-number-preview.png           | Bin [31m0[m -> [32m1506815[m bytes
+ assets/jerseys/jersey-template-back.png            | Bin [31m0[m -> [32m1479997[m bytes
+ assets/jerseys/jersey-template-front.png           | Bin [31m0[m -> [32m1515820[m bytes
+ assets/jerseys/photo-upload-ui.png                 | Bin [31m0[m -> [32m1750814[m bytes
+ assets/jerseys/variants/charcoal.png               | Bin [31m0[m -> [32m1514644[m bytes
+ assets/jerseys/variants/forest-green.png           | Bin [31m0[m -> [32m1497073[m bytes
+ assets/jerseys/variants/navy.png                   | Bin [31m0[m -> [32m1489271[m bytes
+ assets/jerseys/variants/orange.png                 | Bin [31m0[m -> [32m1469930[m bytes
+ assets/jerseys/variants/purple.png                 | Bin [31m0[m -> [32m1546937[m bytes
+ assets/jerseys/variants/red.png                    | Bin [31m0[m -> [32m1564068[m bytes
+ assets/jerseys/variants/teal.png                   | Bin [31m0[m -> [32m1275113[m bytes
+ assets/logo/mtb-logo.png                           | Bin [31m0[m -> [32m1413179[m bytes
+ assets/manifest/asset-manifest.json                | 186 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ assets/splash/splash-screen.png                    | Bin [31m0[m -> [32m2533297[m bytes
+ assets/sprites/base-runner.png                     | Bin [31m0[m -> [32m2173181[m bytes
+ assets/sprites/batter.png                          | Bin [31m0[m -> [32m2411652[m bytes
+ assets/sprites/fielder.png                         | Bin [31m0[m -> [32m2490684[m bytes
+ assets/sprites/pitcher.png                         | Bin [31m0[m -> [32m1998686[m bytes
+ assets/ui/baseball-icon.png                        | Bin [31m0[m -> [32m1468224[m bytes
+ assets/ui/menu-background.png                      | Bin [31m0[m -> [32m2429741[m bytes
+ assets/ui/opponent-picker-mockup.png               | Bin [31m0[m -> [32m2824740[m bytes
+ assets/ui/play-button.png                          | Bin [31m0[m -> [32m1487589[m bytes
+ assets/ui/roster-with-uniforms.png                 | Bin [31m0[m -> [32m1761602[m bytes
+ assets/ui/scoreboard.png                           | Bin [31m0[m -> [32m1669477[m bytes
+ assets/ui/settings-button.png                      | Bin [31m0[m -> [32m1471881[m bytes
+ assets/ui/stat-card.png                            | Bin [31m0[m -> [32m2115559[m bytes
+ assets/ui/team-roster-ui.png                       | Bin [31m0[m -> [32m1994895[m bytes
+ package-lock.json                                  |  42 [32m++++++++++++++++++++++++++++++++++++[m
+ package.json                                       |   2 [32m++[m
+ src/assets.ts                                      |  38 [32m+++++++++++++++++++++++++++++++++[m
+ src/assets/INTEGRATION_GUIDE.md                    | 371 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/assets/README.md                               | 213 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/assets/app-icon/app-icon.png                   | Bin [31m0[m -> [32m1602042[m bytes
+ src/assets/field/baseball-field.png                | Bin [31m0[m -> [32m2432403[m bytes
+ src/assets/jerseys/CUSTOMIZATION-SPEC.md           | 233 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/assets/jerseys/customization-preview.png       | Bin [31m0[m -> [32m2363499[m bytes
+ src/assets/jerseys/customization-screen-mockup.png | Bin [31m0[m -> [32m2975878[m bytes
+ src/assets/jerseys/jersey-color-picker-ui.png      | Bin [31m0[m -> [32m2713920[m bytes
+ src/assets/jerseys/jersey-number-preview.png       | Bin [31m0[m -> [32m1506815[m bytes
+ src/assets/jerseys/jersey-template-back.png        | Bin [31m0[m -> [32m1479997[m bytes
+ src/assets/jerseys/jersey-template-front.png       | Bin [31m0[m -> [32m1515820[m bytes
+ src/assets/jerseys/photo-upload-ui.png             | Bin [31m0[m -> [32m1750814[m bytes
+ src/assets/jerseys/variants/charcoal.png           | Bin [31m0[m -> [32m1514644[m bytes
+ src/assets/jerseys/variants/forest-green.png       | Bin [31m0[m -> [32m1497073[m bytes
+ src/assets/jerseys/variants/navy.png               | Bin [31m0[m -> [32m1489271[m bytes
+ src/assets/jerseys/variants/orange.png             | Bin [31m0[m -> [32m1469930[m bytes
+ src/assets/jerseys/variants/purple.png             | Bin [31m0[m -> [32m1546937[m bytes
+ src/assets/jerseys/variants/red.png                | Bin [31m0[m -> [32m1564068[m bytes
+ src/assets/jerseys/variants/teal.png               | Bin [31m0[m -> [32m1275113[m bytes
+ src/assets/logo/mtb-logo.png                       | Bin [31m0[m -> [32m1413179[m bytes
+ src/assets/manifest/asset-manifest.json            | 186 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/assets/splash/splash-screen.png                | Bin [31m0[m -> [32m2533297[m bytes
+ src/assets/sprites/base-runner.png                 | Bin [31m0[m -> [32m2173181[m bytes
+ src/assets/sprites/batter.png                      | Bin [31m0[m -> [32m2411652[m bytes
+ src/assets/sprites/fielder.png                     | Bin [31m0[m -> [32m2490684[m bytes
+ src/assets/sprites/pitcher.png                     | Bin [31m0[m -> [32m1998686[m bytes
+ src/assets/ui/LINEUP-SCREEN-SPEC.md                | 149 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/assets/ui/baseball-icon.png                    | Bin [31m0[m -> [32m1468224[m bytes
+ src/assets/ui/lineup-screen-mockup.png             | Bin [31m0[m -> [32m1700375[m bytes
+ src/assets/ui/menu-background.png                  | Bin [31m0[m -> [32m2429741[m bytes
+ src/assets/ui/opponent-picker-mockup.png           | Bin [31m0[m -> [32m2824740[m bytes
+ src/assets/ui/play-button.png                      | Bin [31m0[m -> [32m1487589[m bytes
+ src/assets/ui/roster-with-uniforms.png             | Bin [31m0[m -> [32m1761602[m bytes
+ src/assets/ui/scoreboard.png                       | Bin [31m0[m -> [32m1669477[m bytes
+ src/assets/ui/settings-button.png                  | Bin [31m0[m -> [32m1471881[m bytes
+ src/assets/ui/stat-card.png                        | Bin [31m0[m -> [32m2115559[m bytes
+ src/assets/ui/team-roster-ui.png                   | Bin [31m0[m -> [32m1994895[m bytes
+ src/components/CustomJersey.tsx                    | 112 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/components/PlayerCard.tsx                      |  25 [32m++++++++++++++++[m[31m------[m
+ src/context/TeamContext.tsx                        | 120 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/data/mockRoster.ts                             | 167 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m[31m-----------------[m
+ src/data/models.ts                                 |   5 [32m+++++[m
+ src/services/gameHistoryService.ts                 |  60 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/services/jerseyCustomizationService.ts         |  77 [32m++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/services/lineupService.ts                      |  34 [32m++++++++++++++++++++++++++++++[m
+ src/services/playerAppearanceService.ts            |  57 [32m+++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/services/rosterImportService.ts                |  82 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/services/stadiumService.ts                     |  54 [32m+++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/services/teamStorageService.ts                 |  71 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ src/services/unlockManager.ts                      | 169 [32m+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++[m
+ 104 files changed, 6138 insertions(+), 331 deletions(-)

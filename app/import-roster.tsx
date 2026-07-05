@@ -53,7 +53,7 @@ export default function ImportRosterScreen() {
       if (!file?.uri) return;
 
       const content = await FileSystem.readAsStringAsync(file.uri, {
-        encoding: FileSystem.EncodingType.UTF8,
+        encoding: 'utf8' as const,
       });
 
       const isJSON = file.name?.endsWith('.json') || content.trim().startsWith('[') || content.trim().startsWith('{');
