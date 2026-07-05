@@ -110,6 +110,9 @@ export default function SettingsScreen() {
         >
           <Text style={styles.uploadBtnText}>🎨 Customize Jerseys</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.uploadBtn} onPress={() => router.push('/stadiums')}>
+          <Text style={styles.uploadBtnText}>🏟️ Select Stadium</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Game Settings */}

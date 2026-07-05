@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useTeams } from '../../src/context/TeamContext';
 import { Player } from '../../src/data/models';
 import { loadAppearance } from '../../src/services/playerAppearanceService';
 import { SKIN_TONE_OPTIONS } from '../../src/services/playerAppearanceService';
+import { generateStatCard } from '../../src/services/stadiumService';
 
 export default function PlayerDetailScreen() {
   const router = useRouter();
@@ -106,7 +108,24 @@ export default function PlayerDetailScreen() {
         onPress={() => router.push(`/player-appearance?playerId=${player.id}&playerName=${encodeURIComponent(player.name)}`)}
       >
         <Text style={styles.appearanceBtnText}>🎨 Customize Appearance</Text>
-      </TouchableOpacity>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.appearanceBtn, { backgroundColor: '#0E9F6E' }]}
+                  onPress={async () => {
+                    const card = generateStatCard(player.name, activeTeam?.name || 'My Team', {
+                      avg: player.battingAvg > 0 ? player.battingAvg.toFixed(3).slice(1) : '---',
+                      obp: player.OBP > 0 ? player.OBP.toFixed(3).slice(1) : '---',
+                      era: player.ERA > 0 ? player.ERA.toFixed(2) : '---',
+                    });
+                    try {
+                      const avail = await Sharing.isAvailableAsync();
+                      if (avail) await Sharing.shareAsync(card);
+                      else Alert.alert('Sharing', 'Sharing not available on this device.');
+                    } catch {}
+                  }}
+                >
+                  <Text style={styles.appearanceBtnText}>📊 Share Stats</Text>
+                </TouchableOpacity>
     </ScrollView>
   );
 }
