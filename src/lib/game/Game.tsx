@@ -65,7 +65,7 @@ export default function BaseballGame() {
       if (gameState) {
         const fieldingTeam = gameState.gameHalf === 'top' ? gameState.homeTeam : gameState.awayTeam;
         const battingTeam = gameState.gameHalf === 'top' ? gameState.awayTeam : gameState.homeTeam;
-        drawAllFielders(ctx, w, h, fieldingTeam, windupPhase, 0);
+        drawAllFielders(ctx, w, h, fieldingTeam, windupPhase);
 
         const batter = getCurrentBatter(gameState);
         drawPlayer(ctx, w * 0.5 + 20, h * 0.85 - 10, batter, battingTeam, 1.15, false, 0);
